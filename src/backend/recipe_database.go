@@ -30,3 +30,10 @@ func (db *LocalRecipeDatabase) getRecipe(id int) (Recipe, error) {
 	}
 	return db.recipes[id-1], nil
 }
+
+func (db *LocalRecipeDatabase) getAllRecipes() (Recipes, error) {
+	if db.recipeCount == 0 {
+		return Recipes{}, nil
+	}
+	return db.recipes, nil
+}

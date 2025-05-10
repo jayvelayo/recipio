@@ -1,12 +1,12 @@
 package main
 
 import (
-	"testing"
 	"fmt"
+	"testing"
 )
 
 type MockRecipeDatabase struct {
-	recipes []Recipe
+	recipes     []Recipe
 	recipeCount int
 }
 
@@ -30,6 +30,10 @@ func (db *MockRecipeDatabase) getRecipe(id int) (Recipe, error) {
 		return Recipe{}, fmt.Errorf("recipe not found")
 	}
 	return db.recipes[id-1], nil
+}
+
+func (db *MockRecipeDatabase) getAllRecipes() (Recipes, error) {
+	return db.recipes, nil
 }
 
 func TestCreateRecipe(t *testing.T) {

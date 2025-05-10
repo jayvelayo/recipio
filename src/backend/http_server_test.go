@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -19,6 +20,14 @@ func createRequestWithBody(method, url string, body interface{}) (*http.Request,
 	}
 	req.Header.Set("Content-Type", "application/json")
 	return req, nil
+}
+
+func printResponseBody(r *httptest.ResponseRecorder) {
+	bodybytes, err := io.ReadAll(r.Body)
+	if err != nil {
+		return
+	}
+	println(string(bodybytes))
 }
 
 func TestCreateRecipeHandler(t *testing.T) {
@@ -50,7 +59,7 @@ func TestCreateRecipeHandler(t *testing.T) {
 			Name:        "My Recipe",
 			Description: "A delicious recipe",
 		}
-		req, _ := createRequestWithBody("POST", "/v1/recipe", correctBody)
+		req, _ := createRequestWithBody("POST", "v1/recipe", correctBody)
 		response := httptest.NewRecorder()
 
 		handler.ServeHTTP(response, req)
@@ -60,18 +69,70 @@ func TestCreateRecipeHandler(t *testing.T) {
 	})
 }
 
+func TestGetIdFromPath(t *testing.T) {
+	t.Run("Test value 10", func(t *testing.T) {
+		req, _ := http.NewRequest("GET", "v1/recipe/10", nil)
+		id, is_err := getIdFromPath(req)
+		if is_err {
+			t.Errorf("Expected no error but got error")
+		}
+		if id != 10 {
+			t.Errorf("Expected id %d, got %d", 10, id)
+		}
+	})
+
+	t.Run("Test get all", func(t *testing.T) {
+		req, _ := http.NewRequest("GET", "v1/recipe", nil)
+		id, is_err := getIdFromPath(req)
+		if is_err {
+			t.Errorf("Expected no error but got error")
+		}
+		if id != 0 {
+			t.Errorf("Expected id %d, got %d", 0, id)
+		}
+	})
+
+	t.Run("Test invalid path that's too short", func(t *testing.T) {
+		req, _ := http.NewRequest("GET", "v1/10", nil)
+		id, is_err := getIdFromPath(req)
+		if !is_err {
+			t.Errorf("Expected an error but got no error")
+		}
+		if id != 0 {
+			t.Errorf("Expected id %d, got %d", 0, id)
+		}
+	})
+
+	t.Run("Test invalid path that's too long", func(t *testing.T) {
+		req, _ := http.NewRequest("GET", "v1/random/test/url", nil)
+		id, is_err := getIdFromPath(req)
+		if !is_err {
+			t.Errorf("Expected an error but got no error")
+		}
+		if id != 0 {
+			t.Errorf("Expected id %d, got %d", 0, id)
+		}
+	})
+}
+
 func TestGetRecipeHandler(t *testing.T) {
 
 	mockdb := MockRecipeDatabase{}
-	mockdb.recipes = append(mockdb.recipes, Recipe{ID: 1})
-	mockdb.recipeCount = 1
+	mockdb.recipes = append(mockdb.recipes, Recipe{ID: 1}, Recipe{ID: 2})
+	mockdb.recipeCount = 2
 	handler := handleGetRecipe(&mockdb)
 	t.Run("Fetches a recipe by ID", func(t *testing.T) {
-		req, _ := http.NewRequest("GET", "/v1/recipe", nil)
-		
-		q := req.URL.Query()
-		q.Add("id", "1")
-		req.URL.RawQuery = q.Encode()
+		req, _ := http.NewRequest("GET", "v1/recipe/1", nil)
+		response := httptest.NewRecorder()
+
+		handler.ServeHTTP(response, req)
+		if response.Code != http.StatusOK {
+			t.Errorf("Expected status code %d, got %d", http.StatusOK, response.Code)
+		}
+	})
+
+	t.Run("Fetches all recipes", func(t *testing.T) {
+		req, _ := http.NewRequest("GET", "v1/recipe", nil)
 		response := httptest.NewRecorder()
 
 		handler.ServeHTTP(response, req)
@@ -80,11 +141,7 @@ func TestGetRecipeHandler(t *testing.T) {
 		}
 	})
 	t.Run("Checks if id is found", func(t *testing.T) {
-		req, _ := http.NewRequest("GET", "/v1/recipe", nil)
-		
-		q := req.URL.Query()
-		q.Add("id", "2")
-		req.URL.RawQuery = q.Encode()
+		req, _ := http.NewRequest("GET", "v1/recipe/3", nil)
 		response := httptest.NewRecorder()
 
 		handler.ServeHTTP(response, req)

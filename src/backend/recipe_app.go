@@ -12,9 +12,12 @@ type Recipe struct {
 	Instructions string   `json:"instructions"`
 }
 
+type Recipes []Recipe
+
 type RecipeDatabase interface {
 	createRecipe(recipe Recipe) error
 	getRecipe(id int) (Recipe, error)
+	getAllRecipes() (Recipes, error)
 }
 
 func CreateRecipe(recipe Recipe, db RecipeDatabase) error {
@@ -29,4 +32,8 @@ func GetRecipe(id int, db RecipeDatabase) (Recipe, error) {
 		return Recipe{}, fmt.Errorf("id is not valid")
 	}
 	return db.getRecipe(id)
+}
+
+func FetchAllRecipes(db RecipeDatabase) (Recipes, error) {
+	return db.getAllRecipes()
 }
