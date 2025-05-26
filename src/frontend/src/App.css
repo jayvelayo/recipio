@@ -1,0 +1,68 @@
+#root {
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.headerBar {
+  width: auto;
+  display: flex;
+}
+
+.userbox {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-grow: 1
+}
+
+.userinfo {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  width: 200px;
+}
+
+.container {
+  display: flex;
+}
+
+.maincontent {
+  flex-grow: 1;
+}
+
+
+.recipePreviewImage {
+  height:100px;
+  width: 100px;
+  background-color: #555;
+}
+
+.recipePreviewGrid {
+  display: flex;
+  gap: 20px;
+}
+
+.recipePreviewRowItem {
+  display: flex;
+}
+
+.recipePreviewRowItem {
+  flex-grow: 1;
+}
+
+.row-uid {
+  flex-basis: 40px;
+  flex-grow: 0;
+  flex-shrink: 1;
+}
+
+.row-name {
+  flex-shrink: 0;
+  flex-basis: 400px;
+  flex-grow: 2;
+}
