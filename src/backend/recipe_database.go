@@ -37,3 +37,7 @@ func (db *LocalRecipeDatabase) getAllRecipes() (Recipes, error) {
 	}
 	return db.recipes, nil
 }
+
+func (db *LocalRecipeDatabase) closeDb() {
+	return
+}

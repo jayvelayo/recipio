@@ -6,7 +6,6 @@ import (
 	"log"
 	"net/http"
 	"strconv"
-	"strings"
 )
 
 func decodeJson[T any](r *http.Request) (T, error) {
@@ -19,13 +18,16 @@ func decodeJson[T any](r *http.Request) (T, error) {
 	return v, err
 }
 
-func encodeJson[T any](w http.ResponseWriter, r *http.Request, status int, v T) error {
+func encodeJson[T any](w http.ResponseWriter, status int, v T) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	if err := json.NewEncoder(w).Encode(v); err != nil {
-		return fmt.Errorf("encode json: %w", err)
-	}
+
+	json.NewEncoder(w).Encode(v)
 	return nil
+}
+
+type CreateRecipeResponse struct {
+	RecipeId uint64 `json:"id"`
 }
 
 func handleCreateRecipe(recipeDb RecipeDatabase) http.Handler {
@@ -44,65 +46,63 @@ func handleCreateRecipe(recipeDb RecipeDatabase) http.Handler {
 				http.Error(w, "Invalid JSON body", http.StatusBadRequest)
 				return
 			}
-			err = CreateRecipe(recipe, recipeDb)
+			if recipe.Name == "" || len(recipe.Ingredients) == 0 || len(recipe.Instructions) == 0 {
+				http.Error(w, "Missing fields", http.StatusBadRequest)
+				return
+			}
+			recipeId, err := recipeDb.createRecipe(recipe)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+			err = encodeJson(w, http.StatusCreated, CreateRecipeResponse{RecipeId: recipeId})
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusBadRequest)
 				return
 			}
 			w.WriteHeader(http.StatusCreated)
-			w.Write([]byte("Recipe created successfully!"))
 		},
 	)
-}
-
-/*
-	returns the id and false. id of 0 means 'all'
-	If the path is not specified, or invalid, then returns true.
-*/
-func getIdFromPath(r *http.Request) (int, bool) {
-	paths := strings.Split(r.URL.Path, "/")
-	// we expect v1/recipe/{id}
-	if paths[0] != "v1" || paths[1] != "recipe" {
-		return 0, true
-	}
-	if len(paths) < 3 {
-		return 0, false
-	}
-	if len(paths) > 3 {
-		return 0, true
-	}
-	id, err := strconv.Atoi(paths[2])
-	if err != nil || id < 1 {
-		return 0, true
-	}
-	return id, false
 }
 
 func handleGetRecipe(recipeDb RecipeDatabase) http.Handler {
 	return http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
-			id, is_err := getIdFromPath(r)
-			if is_err {
-				http.Error(w, "Invalid recipe path", http.StatusBadRequest)
+			id_str := r.PathValue("id")
+			id, err := strconv.Atoi(id_str)
+			if err != nil || id < 1 {
+				http.Error(w, "Failed to parse recipe id", http.StatusBadRequest)
 				return
 			}
 			var recipes Recipes
 			if id != 0 {
-				recipe, err := GetRecipe(id, recipeDb)
+				recipe, err := recipeDb.getRecipe(id)
 				if err != nil {
 					http.Error(w, err.Error(), http.StatusNotFound)
 					return
 				}
 				recipes = Recipes{recipe}
-			} else {
-				recipes_, err := FetchAllRecipes(recipeDb)
-				if err != nil {
-					http.Error(w, err.Error(), http.StatusNotFound)
-					return
-				}
-				recipes = recipes_
 			}
-			err := encodeJson(w, r, http.StatusOK, recipes)
+			err = encodeJson(w, http.StatusOK, recipes)
+			if err != nil {
+				http.Error(w, "Error marshalling recipe to JSON", http.StatusInternalServerError)
+				return
+			}
+		},
+	)
+}
+
+func handleGetAllRecipe(recipeDb RecipeDatabase) http.Handler {
+	return http.HandlerFunc(
+		func(w http.ResponseWriter, r *http.Request) {
+			var recipes Recipes
+			recipes, err := recipeDb.getAllRecipes()
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusNotFound)
+				return
+			}
+
+			err = encodeJson(w, http.StatusOK, recipes)
 			if err != nil {
 				http.Error(w, "Error marshalling recipe to JSON", http.StatusInternalServerError)
 				return
@@ -116,7 +116,8 @@ func SetUpRoutes(
 	recipeDatabase RecipeDatabase,
 ) {
 	mux.Handle("POST /v1/recipe", handleCreateRecipe(recipeDatabase))
-	mux.Handle("GET /v1/recipe", handleGetRecipe(recipeDatabase))
+	mux.Handle("GET /v1/recipe/{id}", handleGetRecipe(recipeDatabase))
+	mux.Handle("GET /v1/recipe", handleGetAllRecipe(recipeDatabase))
 }
 
 func newServer(
@@ -131,11 +132,15 @@ func newServer(
 }
 
 func main() {
-	var recipeDb RecipeDatabase = &LocalRecipeDatabase{}
+	recipeDb, err := initDb()
+	if err != nil {
+		log.Fatalf("unable to init db")
+	}
+	defer recipeDb.closeDb()
 	srv := newServer(recipeDb)
 
-	log.Println("Starting server on :8080...")
-	if err := http.ListenAndServe(":8080", srv); err != nil {
+	log.Println("Starting server on :4002...")
+	if err := http.ListenAndServe(":4002", srv); err != nil {
 		log.Fatalf("Could not start server: %s\n", err)
 	}
 }
