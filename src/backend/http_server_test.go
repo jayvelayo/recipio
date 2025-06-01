@@ -236,7 +236,7 @@ func decodeJsonResponse[T any](r *bytes.Buffer) (T, error) {
 	return v, err
 }
 
-func TestServer(t *testing.T) {
+func TestServer_e2e_recipes(t *testing.T) {
 	testDb, err := initTestDb()
 	if err != nil {
 		t.Fatalf("unable to initialize test db %v", err)
@@ -298,8 +298,46 @@ func TestServer(t *testing.T) {
 		if len(recipes) != 1 {
 			t.Errorf("Expected length of recipes arr %d, got %d", 1, len(recipes))
 		}
-		recipes[0].ID = mockRecipes[1].ID // id is not guaranteed to be the same
 		diff := deep.Equal(recipes[0], mockRecipes[1])
+		if diff != nil {
+			t.Error(diff)
+		}
+	})
+}
+
+func TestServer_e2e_multiple_recipes(t *testing.T) {
+	testDb, err := initTestDb()
+	if err != nil {
+		t.Fatalf("unable to initialize test db %v", err)
+	}
+	defer testDb.closeDb()
+	handler := createFakeServer(testDb)
+	t.Run("Fetches multiple recipes", func(t *testing.T) {
+		for _, recipe := range mockRecipes {
+			req, _ := createRequestWithBody("POST", "/v1/recipe", recipe)
+			response := httptest.NewRecorder()
+
+			handler.ServeHTTP(response, req)
+			if response.Code != http.StatusCreated {
+				t.Errorf("Expected status code %d, got %d", http.StatusCreated, response.Code)
+			}
+		}
+		/* fetch */
+		req, _ := http.NewRequest("GET", "/v1/recipe", nil)
+		response := httptest.NewRecorder()
+
+		handler.ServeHTTP(response, req)
+		if response.Code != http.StatusOK {
+			t.Fatalf("Expected status code %d, got %d", http.StatusOK, response.Code)
+		}
+		recipes, err := decodeJsonResponse[Recipes](response.Body)
+		if err != nil {
+			t.Fatalf("failed to decode response body: %s", err)
+		}
+		if len(recipes) != 5 {
+			t.Errorf("Expected length of recipes arr %d, got %d", 5, len(recipes))
+		}
+		diff := deep.Equal(recipes, mockRecipes)
 		if diff != nil {
 			t.Error(diff)
 		}

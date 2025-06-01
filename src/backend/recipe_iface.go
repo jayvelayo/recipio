@@ -8,7 +8,7 @@ type Ingredient struct {
 }
 
 type Recipe struct {
-	ID           int             `json:"id"`
+	ID           int             `json:"id" deep:"-"`
 	Name         string          `json:"name"`
 	Description  string          `json:"description"`
 	Ingredients  []Ingredient    `json:"ingredients"`

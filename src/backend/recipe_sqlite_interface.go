@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"database/sql"
-	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -153,8 +152,42 @@ func (ctx *SqliteDatabaseContext) getRecipe(id int) (Recipe, error) {
 	return recipe, nil
 }
 
-func (db *SqliteDatabaseContext) getAllRecipes() (Recipes, error) {
-	return nil, errors.New("not implemented")
+func (ctx *SqliteDatabaseContext) getAllRecipes() (Recipes, error) {
+	var recipes Recipes
+	db := ctx.sqliteDb
+
+	query := fmt.Sprintf("SELECT id, name, instruction FROM %s", ctx.schema.RecipesTable)
+	rows, err := db.Query(query)
+	if err != nil {
+		return Recipes{}, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var instructions string
+		var recipe Recipe
+		if err := rows.Scan(&recipe.ID, &recipe.Name, &instructions); err != nil {
+			return recipes, err
+		}
+		recipe.Instructions = decodeInstructionList(instructions)
+		// Fetch ingredients
+		query = fmt.Sprintf("SELECT name, quantity FROM %s WHERE recipe_id = ?", ctx.schema.IngredientsTable)
+		ing_rows, err := db.Query(query, recipe.ID)
+		if err != nil {
+			return recipes, err
+		}
+		defer rows.Close()
+
+		for ing_rows.Next() {
+			var ing Ingredient
+			if err := ing_rows.Scan(&ing.Name, &ing.Quantity); err != nil {
+				return recipes, err
+			}
+			recipe.Ingredients = append(recipe.Ingredients, ing)
+		}
+		recipes = append(recipes, recipe)
+	}
+	return recipes, nil
 }
 
 func (ctx *SqliteDatabaseContext) closeDb() {
