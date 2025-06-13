@@ -1,14 +1,15 @@
 import './App.css'
 import { RouterProvider, NavLink, Outlet } from 'react-router'
 import { router, sidebarLinks} from './routes.jsx'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
-
+const queryClient = new QueryClient();
 
 function App() {
     return (
-    <>
+    <QueryClientProvider client={queryClient}>
       <RouterProvider router={router} />
-    </>
+    </QueryClientProvider>
     )
 }
 

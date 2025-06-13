@@ -177,7 +177,7 @@ func (ctx *SqliteDatabaseContext) getAllRecipes() (Recipes, error) {
 			return recipes, err
 		}
 		defer rows.Close()
-
+		log.Println("Found recipe id: %d", recipe.ID)
 		for ing_rows.Next() {
 			var ing Ingredient
 			if err := ing_rows.Scan(&ing.Name, &ing.Quantity); err != nil {

@@ -1,15 +1,16 @@
 import { useState } from "react";
-import { useNavigate, useParams } from "react-router";
+import { useNavigate, useParams, Form } from "react-router";
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 const mockRecipes = [
   {
-    uid: 1,
+    id: 2,
     name: "French toast",
     tags: [
       "breakfast",
       "easy",
     ],
-    ingredientList: [
+    ingredients: [
       "2 pieces eggs",
       "2 pieces bread",
       "50 mL milk",
@@ -22,13 +23,13 @@ const mockRecipes = [
     ]
   },
   {
-    uid: 2,
+    id: 1,
     name: "Pancakes",
     tags: [
       "breakfast",
       "easy",
     ],
-    ingredientList: [
+    ingredients: [
       "200 grams flour",
       "300 mL milk",
       "1 pieces egg",
@@ -45,7 +46,7 @@ const mockRecipes = [
   {
     uid: 3,
     name: "Scrambled Eggs",
-    ingredientList: [
+    ingredients: [
       "3 pieces eggs",
       "30 mL milk",
       "1 tablespoons butter",
@@ -64,7 +65,7 @@ const mockRecipes = [
     tags: [
       "easy",
     ],
-    ingredientList: [
+    ingredients: [
       "2 pieces bread",
       "2 pieces cheese slices",
       "1 tablespoons butter",
@@ -81,7 +82,7 @@ const mockRecipes = [
     tags: [
       "snack",
     ],
-    ingredientList: [
+    ingredients: [
       "1 pieces banana",
       "200 mL milk",
       "100 grams yogurt",
@@ -96,26 +97,18 @@ const mockRecipes = [
   }
 ];
 
-function RecipeGridPreview({ recipe }) {
-
-  return (
-    <div>
-      <img src="#" className="recipePreviewImage" height={200} width={200} alt={recipe.name}/>
-      <h2 className="recipePreviewName">{recipe.name}</h2>
-    </div>
-  )
+function getRecipes() {
+  return fetch('http://localhost:4002/v1/recipe', { mode: "cors"})
+    .then(res => res.json());
 }
 
-export default function RecipeGridList() {
-
-    let recipes = mockRecipes;
-    return (
-      <div className="recipePreviewGrid">
-      { recipes.map((recipe) => (
-        <RecipeGridPreview recipe={recipe} key={recipe.uid} />
-      ))}
-      </div>
-    )
+function createRecipe(newRecipe) {
+  return fetch('http://localhost:4002/v1/recipe', { 
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    mode: "cors",
+    body: JSON.stringify(newRecipe),
+  }).then(res => res.json());
 }
 
 function displayTagsToString(tags) {
@@ -125,37 +118,54 @@ function displayTagsToString(tags) {
   return tags.join(", ")
 }
 
-function RecipeRowPreview({recipe}) {
+export function RecipeRowPreview({recipe}) {
   return (
     <div className="recipePreviewRowItem item">
-      <a className="header" href={`/recipe/view/${recipe.uid}`}>{recipe.name}</a>
+      <a className="header" href={`/recipe/view/${recipe.id}`}>{recipe.name}</a>
       Tags: {displayTagsToString(recipe.tags)}
     </div>
   )
 }
 
-export function RecipeRowList() {
-  let recipes = mockRecipes;
+export function RecipeList() {
+  const { data, isLoading, error } = useQuery({
+      queryKey: ['recipes'],
+      queryFn: getRecipes,
+  });
+
+  if (isLoading) return <p>Loading...</p>;
+  if (error) return <p>Error: {error.message}</p>
+
   return (
     <>
     <h2>Available Recipes</h2>
     <div className="recipePreviewRow ui celled relaxed selection list large animated">
-      { recipes.map( (recipe) => (
-        <RecipeRowPreview recipe={recipe} key={recipe.uid} />
+      { data.map( (recipe) => (
+        <RecipeRowPreview recipe={recipe} key={recipe.id} />
       ))}
     </div>
-    <form action="/recipe/add/">
+    <Form action="/recipe/add/">
       <button className="ui button primary" type="submit">Create new recipe</button>
-    </form>
+    </Form>
       </>
   )
 }
 
 export function AddRecipeForm() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+
+  const mutation = useMutation({
+    mutationFn: createRecipe,
+    onSuccess: () => {
+      // Invalidate recipes list to refetch
+      queryClient.invalidateQueries(['recipes']);
+    },
+  });
+
   const blankRecipe = {
     name: "",
-    ingredientList: [],
+    ingredients: [],
     instructions: [],
   }
   const [recipe, setRecipe] = useState(blankRecipe);
@@ -164,7 +174,7 @@ export function AddRecipeForm() {
       setRecipe({...recipe, name: e.target.value})
     }
     if (e.target.name == "ingredientsList") {
-      setRecipe({...recipe, ingredientList: e.target.value.split(/\r?\n/)});
+      setRecipe({...recipe, ingredients: e.target.value.split(/\r?\n/)});
     }
     if (e.target.name == "instructions") {
       setRecipe({...recipe, instructions: e.target.value.split(/\r?\n/)});
@@ -172,8 +182,8 @@ export function AddRecipeForm() {
   }
   const addRecipeSubmitHandler = (e) => {
     e.preventDefault();
-    console.log(recipe)
-    setRecipe(blankRecipe)
+    console.log(recipe);
+    mutation.mutate(recipe);
   }
 
   return (
@@ -198,7 +208,7 @@ export function AddRecipeForm() {
             placeholder="Ingredients"
             name="ingredientsList"
             onChange={handleFormChange}
-            value={recipe.ingredientList.join('\r\n')}
+            value={recipe.ingredients.join('\r\n')}
             required
             ></textarea>
         </div>
@@ -212,7 +222,9 @@ export function AddRecipeForm() {
             required
           ></textarea>
         </div>
-        <button className="ui button primary" type="submit">Save</button>
+        <button className="ui button primary" type="submit" disabled={mutation.isPending}>
+          {mutation.isPending ? 'Saving..' : 'Save'}
+        </button>
         <button onClick={() => navigate("/recipe")} className="ui button negative" type="button">Cancel</button>
       </form>
     </>
@@ -232,10 +244,10 @@ function getClassFromTag(tag) {
 
 export function ViewRecipe() {
   let params = useParams()
-  let filtered = mockRecipes.filter(item => item.uid == params.uid)
+  let filtered = mockRecipes.filter(item => item.id == params.id)
   const recipe = filtered[0];
 
-  const listIngredients = recipe.ingredientList.map((item) => 
+  const listIngredients = recipe.ingredients.map((item) => 
     <div className="item">
       {item}
     </div>

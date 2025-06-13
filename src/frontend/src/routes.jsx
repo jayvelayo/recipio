@@ -1,6 +1,6 @@
 
 import { createBrowserRouter, Outlet } from "react-router";
-import { AddRecipeForm, RecipeRowList, ViewRecipe} from "./Recipes";
+import { AddRecipeForm, RecipeList, ViewRecipe} from "./Recipes";
 import { HomePage, Layout } from "./App";
 
 export const sidebarLinks = [
@@ -24,7 +24,7 @@ export const router = createBrowserRouter([
             { 
                 path: "/recipe", 
                 children: [
-                    {index: true, Component: RecipeRowList},
+                    {index: true, Component: RecipeList},
                     {path: "add", Component: AddRecipeForm},
                     {
                         path: "view/:uid", 
