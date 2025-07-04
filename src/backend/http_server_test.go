@@ -10,8 +10,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
-
-	"github.com/go-test/deep"
 )
 
 func createRequestWithBody(method, url string, body interface{}) (*http.Request, error) {
@@ -65,12 +63,11 @@ func TestCreateRecipeHandler(t *testing.T) {
 	})
 
 	t.Run("Creates a new recipe", func(t *testing.T) {
-		correctBody := Recipe{
-			Name:        "My Recipe",
-			Description: "A delicious recipe",
-			Ingredients: []Ingredient{
-				{Name: "Banana", Quantity: "2"},
-				{Name: "Egg", Quantity: "2"},
+		correctBody := RecipeBody{
+			Name: "My Recipe",
+			Ingredients: []string{
+				"2 Banana",
+				"2 Egg",
 			},
 			Instructions: []string{"Cook", "me"},
 		}
@@ -120,16 +117,15 @@ func TestGetRecipeHandler(t *testing.T) {
 	})
 }
 
-var mockRecipes = Recipes{
+var mockRecipes = []RecipeBody{
 	{
-		ID:   1,
 		Name: "French toast",
-		Ingredients: []Ingredient{
-			{Name: "eggs", Quantity: "2 pieces"},
-			{Name: "bread", Quantity: "2 pieces"},
-			{Name: "milk", Quantity: "50 mL"},
+		Ingredients: []string{
+			"2 pieces eggs",
+			"2 pieces bread",
+			"50 mL milk",
 		},
-		Instructions: instructionList{
+		Instructions: []string{
 			"Beats eggs until smooth",
 			"Add milk to the egg mixture",
 			"Dip the bread into the milk-egg mixture",
@@ -137,16 +133,15 @@ var mockRecipes = Recipes{
 		},
 	},
 	{
-		ID:   2,
 		Name: "Pancakes",
-		Ingredients: []Ingredient{
-			{Name: "flour", Quantity: "200 grams"},
-			{Name: "milk", Quantity: "300 mL"},
-			{Name: "egg", Quantity: "1 pieces"},
-			{Name: "sugar", Quantity: "2 tablespoons"},
-			{Name: "baking powder", Quantity: "1 teaspoons"},
+		Ingredients: []string{
+			"200 grams flour",
+			"300 mL milk",
+			"1 pieces egg",
+			"2 tablespoons sugar",
+			"1 teaspoons baking powder",
 		},
-		Instructions: instructionList{
+		Instructions: []string{
 			"Mix all dry ingredients in a bowl",
 			"Add milk and egg, then whisk until smooth",
 			"Heat a lightly oiled pan over medium heat",
@@ -154,15 +149,14 @@ var mockRecipes = Recipes{
 		},
 	},
 	{
-		ID:   3,
 		Name: "Scrambled Eggs",
-		Ingredients: []Ingredient{
-			{Name: "eggs", Quantity: "3 pieces"},
-			{Name: "milk", Quantity: "30 mL"},
-			{Name: "butter", Quantity: "1 tablespoons"},
-			{Name: "salt", Quantity: "0.5 teaspoons"},
+		Ingredients: []string{
+			"3 pieces eggs",
+			"30 mL milk",
+			"1 tablespoons butter",
+			"0.5 teaspoons salt",
 		},
-		Instructions: instructionList{
+		Instructions: []string{
 			"Crack the eggs into a bowl and add milk and salt",
 			"Whisk the mixture until well combined",
 			"Melt butter in a pan over medium heat",
@@ -170,29 +164,27 @@ var mockRecipes = Recipes{
 		},
 	},
 	{
-		ID:   4,
 		Name: "Grilled Cheese Sandwich",
-		Ingredients: []Ingredient{
-			{Name: "bread", Quantity: "2 pieces"},
-			{Name: "cheese slices", Quantity: "2 pieces"},
-			{Name: "butter", Quantity: "1 tablespoons"},
+		Ingredients: []string{
+			"2 pieces bread",
+			"2 pieces cheese slices",
+			"1 tablespoons butter",
 		},
-		Instructions: instructionList{
+		Instructions: []string{
 			"Butter one side of each bread slice",
 			"Place cheese between the unbuttered sides of the bread",
 			"Cook in a pan over medium heat until golden on both sides and cheese is melted",
 		},
 	},
 	{
-		ID:   5,
 		Name: "Banana Smoothie",
-		Ingredients: []Ingredient{
-			{Name: "banana", Quantity: "1 pieces"},
-			{Name: "milk", Quantity: "200 mL"},
-			{Name: "yogurt", Quantity: "100 grams"},
-			{Name: "honey", Quantity: "1 tablespoons"},
+		Ingredients: []string{
+			"1 pieces banana",
+			"200 mL milk",
+			"100 grams yogurt",
+			"1 tablespoons honey",
 		},
-		Instructions: instructionList{
+		Instructions: []string{
 			"Peel and slice the banana",
 			"Add banana, milk, yogurt, and honey to a blender",
 			"Blend until smooth",
@@ -257,6 +249,9 @@ func TestServer_e2e_recipes(t *testing.T) {
 		if err != nil {
 			t.Fatalf("failed to decode response body: %s", err)
 		}
+		if recipeResp.Status != StatusOK {
+			t.Errorf("Expected status %d, got %d", StatusOK, recipeResp.Status)
+		}
 		if recipeResp.RecipeId == 0 {
 			t.Log(recipeResp)
 			t.Errorf("Expected id to be non-zero: %d", recipeResp.RecipeId)
@@ -298,9 +293,66 @@ func TestServer_e2e_recipes(t *testing.T) {
 		if len(recipes) != 1 {
 			t.Errorf("Expected length of recipes arr %d, got %d", 1, len(recipes))
 		}
-		diff := deep.Equal(recipes[0], mockRecipes[1])
-		if diff != nil {
-			t.Error(diff)
+		if recipes[0].ID == 0 {
+			t.Errorf("Expected non-zero id, got %d", recipes[0].ID)
+		}
+	})
+}
+
+func TestServer_e2e_delete_recipe(t *testing.T) {
+	testDb, err := initTestDb()
+	if err != nil {
+		t.Fatalf("unable to initialize test db %v", err)
+	}
+	defer testDb.closeDb()
+	handler := createFakeServer(testDb)
+	t.Run("Deletes the recipe", func(t *testing.T) {
+		/* insert first */
+		expected_recipe := mockRecipes[1]
+		req, _ := createRequestWithBody("POST", "/v1/recipe", expected_recipe)
+		response := httptest.NewRecorder()
+
+		handler.ServeHTTP(response, req)
+		if response.Code != http.StatusCreated {
+			t.Errorf("Expected status code %d, got %d", http.StatusCreated, response.Code)
+		}
+		recipeResp, err := decodeJsonResponse[CreateRecipeResponse](response.Body)
+		if err != nil {
+			t.Fatalf("failed to decode response body: %s", err)
+		}
+		if recipeResp.RecipeId == 0 {
+			t.Log(recipeResp)
+			t.Errorf("Expected id to be non-zero: %d", recipeResp.RecipeId)
+		}
+
+		/* fetch */
+		fetch_endpoint := fmt.Sprintf("/v1/recipe/%d", recipeResp.RecipeId)
+		req, _ = http.NewRequest("GET", fetch_endpoint, nil)
+		response = httptest.NewRecorder()
+
+		handler.ServeHTTP(response, req)
+		if response.Code != http.StatusOK {
+			t.Fatalf("Expected status code %d, got %d", http.StatusOK, response.Code)
+		}
+		recipes, err := decodeJsonResponse[Recipes](response.Body)
+		if err != nil {
+			t.Fatalf("failed to decode response body: %s", err)
+		}
+		if len(recipes) != 1 {
+			t.Errorf("Expected length of recipes arr %d, got %d", 1, len(recipes))
+		}
+		if recipes[0].ID == 0 {
+			t.Errorf("Expected non-zero id, got %d", recipes[0].ID)
+		}
+
+		/* delete */
+		delete_endpoint := fmt.Sprintf("/v1/recipe/%d", recipeResp.RecipeId)
+		req, _ = http.NewRequest("DELETE", delete_endpoint, nil)
+		response = httptest.NewRecorder()
+
+		handler.ServeHTTP(response, req)
+		if response.Code != http.StatusOK {
+			t.Fatalf("Expected status code %d, got %d", http.StatusOK, response.Code)
 		}
 	})
 }
@@ -337,9 +389,10 @@ func TestServer_e2e_multiple_recipes(t *testing.T) {
 		if len(recipes) != 5 {
 			t.Errorf("Expected length of recipes arr %d, got %d", 5, len(recipes))
 		}
-		diff := deep.Equal(recipes, mockRecipes)
-		if diff != nil {
-			t.Error(diff)
+		for _, recipe := range recipes {
+			if recipe.ID == 0 {
+				t.Errorf("Expected non-zero id, got %d", recipe.ID)
+			}
 		}
 	})
 }

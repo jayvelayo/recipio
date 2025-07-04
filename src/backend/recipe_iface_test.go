@@ -36,6 +36,16 @@ func (db *MockRecipeDatabase) getAllRecipes() (Recipes, error) {
 	return db.recipes, nil
 }
 
+func (db *MockRecipeDatabase) deleteRecipe(id int) error {
+	if id < 1 || id > db.recipeCount {
+		return fmt.Errorf("recipe not found")
+	}
+	// Remove the recipe from the slice
+	db.recipes = append(db.recipes[:id-1], db.recipes[id:]...)
+	db.recipeCount--
+	return nil
+}
+
 func (db *MockRecipeDatabase) closeDb() {
 }
 
@@ -83,6 +93,34 @@ func TestCreateRecipe(t *testing.T) {
 		}
 		if id != 1 {
 			t.Errorf("Expected 1, got: %d", id)
+		}
+	})
+}
+
+func TestDeleteRecipe(t *testing.T) {
+	t.Run("Delete existing recipe", func(t *testing.T) {
+		db := &MockRecipeDatabase{}
+		recipe := Recipe{
+			Name:        "My Recipe",
+			Description: "A delicious recipe",
+		}
+		id, err := db.createRecipe(recipe)
+		if err != nil {
+			t.Fatalf("Failed to create recipe: %v", err)
+		}
+		if err := db.deleteRecipe(int(id)); err != nil {
+			t.Errorf("Expected no error, got %v", err)
+		}
+		if db.recipeCount != 0 {
+			t.Errorf("Expected recipeCount 0, got %d", db.recipeCount)
+		}
+	})
+
+	t.Run("Delete non-existent recipe", func(t *testing.T) {
+		db := &MockRecipeDatabase{}
+		err := db.deleteRecipe(1)
+		if err == nil {
+			t.Errorf("Expected error for non-existent recipe, got nil")
 		}
 	})
 }

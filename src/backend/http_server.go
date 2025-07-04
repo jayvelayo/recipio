@@ -21,30 +21,49 @@ func decodeJson[T any](r *http.Request) (T, error) {
 
 func encodeJson[T any](w http.ResponseWriter, status int, v T) error {
 	w.Header().Set("Content-Type", "application/json")
-	fmt.Println("Response Headers:")
-	for name, values := range w.Header() {
-		for _, value := range values {
-			fmt.Printf("%s: %s\n", name, value)
-		}
-	}
 	w.WriteHeader(status)
 
 	json.NewEncoder(w).Encode(v)
 	return nil
 }
 
+type ResponseStatus int
+
+const (
+	StatusOK ResponseStatus = iota
+	StatusError
+	StatusEmptyBody
+	StatusInvalidJson
+	StatusNotFound
+	StatusMissingFields
+	StatusAlreadyExist
+	StatusEncodingError
+)
+
+type RecipeBody struct {
+	Name         string   `json:"name"`
+	Ingredients  []string `json:"ingredients"`
+	Instructions []string `json:"instructions"`
+}
+
 type CreateRecipeResponse struct {
-	RecipeId uint64 `json:"id"`
+	Status       ResponseStatus `json:"status"`
+	ErrorMessage string         `json:"errorMessage"`
+	RecipeId     uint64         `json:"id"`
+}
+
+func returnError(w http.ResponseWriter, httpStatus int, status ResponseStatus, errorMessage string) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(httpStatus)
+	errReponse := CreateRecipeResponse{
+		Status:       status,
+		ErrorMessage: errorMessage,
+		RecipeId:     0,
+	}
+	json.NewEncoder(w).Encode(errReponse)
 }
 
 func handleCreateRecipe(recipeDb RecipeDatabase) http.Handler {
-
-	type RecipeBody struct {
-		Name         string   `json:"name"`
-		Ingredients  []string `json:"ingredients"`
-		Instructions []string `json:"instructions"`
-	}
-
 	convertBodyToRecipe := func(body RecipeBody) Recipe {
 		var recipe Recipe
 		recipe.Name = body.Name
@@ -70,29 +89,27 @@ func handleCreateRecipe(recipeDb RecipeDatabase) http.Handler {
 				http.Error(w, "Content-Type must be application/json", http.StatusUnsupportedMediaType)
 			}
 			if r.Body == nil || r.Body == http.NoBody {
-				http.Error(w, "Request body cannot be empty", http.StatusBadRequest)
+				returnError(w, http.StatusBadRequest, StatusEmptyBody, "Request body cannot be empty")
 				return
 			}
 			recipeBody, err := decodeJson[RecipeBody](r)
 			if err != nil {
-				http.Error(w, "Invalid JSON body", http.StatusBadRequest)
+				returnError(w, http.StatusBadRequest, StatusInvalidJson, "Invalid JSON body")
 				return
 			}
-			log.Printf("Received body: %+v", recipeBody)
 			recipe := convertBodyToRecipe(recipeBody)
-			log.Printf("Processed body: %+v", recipe)
 			if recipe.Name == "" || len(recipe.Ingredients) == 0 || len(recipe.Instructions) == 0 {
-				http.Error(w, "Missing fields", http.StatusBadRequest)
+				returnError(w, http.StatusBadRequest, StatusMissingFields, "Missing fields")
 				return
 			}
 			recipeId, err := recipeDb.createRecipe(recipe)
 			if err != nil {
-				http.Error(w, err.Error(), http.StatusBadRequest)
+				returnError(w, http.StatusBadRequest, StatusError, err.Error())
 				return
 			}
 			err = encodeJson(w, http.StatusCreated, CreateRecipeResponse{RecipeId: recipeId})
 			if err != nil {
-				http.Error(w, err.Error(), http.StatusBadRequest)
+				returnError(w, http.StatusBadRequest, StatusEncodingError, err.Error())
 				return
 			}
 			w.WriteHeader(http.StatusCreated)
@@ -132,7 +149,6 @@ func handleGetAllRecipe(recipeDb RecipeDatabase) http.Handler {
 	return http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
 			var recipes Recipes
-			log.Println("Called `handleGetAllRecipe`")
 			recipes, err := recipeDb.getAllRecipes()
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusNotFound)
@@ -148,10 +164,31 @@ func handleGetAllRecipe(recipeDb RecipeDatabase) http.Handler {
 	)
 }
 
+func handleDeleteRecipe(recipeDb RecipeDatabase) http.Handler {
+	return http.HandlerFunc(
+		func(w http.ResponseWriter, r *http.Request) {
+			id_str := r.PathValue("id")
+			id, err := strconv.Atoi(id_str)
+			if err != nil || id < 1 {
+				http.Error(w, "Failed to parse recipe id", http.StatusBadRequest)
+				return
+			}
+			log.Printf("Deleting recipe id %d", id)
+			if id != 0 {
+				err := recipeDb.deleteRecipe(id)
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusNotFound)
+					return
+				}
+			}
+			w.WriteHeader(http.StatusOK)
+		},
+	)
+}
+
 func withCORS(handler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		origin := r.Header.Get("Origin")
-		log.Printf("Received request from %s", origin)
 		// Allow all localhost origins (any port)
 		if strings.HasPrefix(origin, "http://127.0.0.1") || strings.HasPrefix(origin, "https://127.0.0.1") {
 			log.Printf("Setting headers")
@@ -193,6 +230,7 @@ func SetUpRoutes(
 	mux.Handle("OPTIONS /v1/recipe", handleCORS())
 	mux.Handle("POST /v1/recipe", withCORS(handleCreateRecipe(recipeDatabase)))
 	mux.Handle("GET /v1/recipe/{id}", withCORS(handleGetRecipe(recipeDatabase)))
+	mux.Handle("DELETE /v1/recipe/{id}", withCORS(handleDeleteRecipe(recipeDatabase)))
 	mux.Handle("GET /v1/recipe", withCORS(handleGetAllRecipe(recipeDatabase)))
 }
 

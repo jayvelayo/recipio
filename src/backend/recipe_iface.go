@@ -21,5 +21,6 @@ type RecipeDatabase interface {
 	createRecipe(recipe Recipe) (uint64, error)
 	getRecipe(id int) (Recipe, error)
 	getAllRecipes() (Recipes, error)
+	deleteRecipe(id int) error
 	closeDb()
 }

@@ -152,6 +152,39 @@ func (ctx *SqliteDatabaseContext) getRecipe(id int) (Recipe, error) {
 	return recipe, nil
 }
 
+func (ctx *SqliteDatabaseContext) deleteRecipe(id int) error {
+	db := ctx.sqliteDb
+
+	tx, err := db.Begin()
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	// Delete ingredients first (due to FK constraint)
+	delIngredients := fmt.Sprintf("DELETE FROM %s WHERE recipe_id = ?", ctx.schema.IngredientsTable)
+	if _, err := tx.Exec(delIngredients, id); err != nil {
+		return fmt.Errorf("failed to delete ingredients: %w", err)
+	}
+	// Delete the recipe
+	delRecipe := fmt.Sprintf("DELETE FROM %s WHERE id = ?", ctx.schema.RecipesTable)
+	res, err := tx.Exec(delRecipe, id)
+	if err != nil {
+		return fmt.Errorf("failed to delete recipe: %w", err)
+	}
+	rowsAffected, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get affected rows: %w", err)
+	}
+	if rowsAffected == 0 {
+		return fmt.Errorf("recipe with id %d not found", id)
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
+	}
+	return nil
+}
+
 func (ctx *SqliteDatabaseContext) getAllRecipes() (Recipes, error) {
 	var recipes Recipes
 	db := ctx.sqliteDb
@@ -177,7 +210,7 @@ func (ctx *SqliteDatabaseContext) getAllRecipes() (Recipes, error) {
 			return recipes, err
 		}
 		defer rows.Close()
-		log.Println("Found recipe id: %d", recipe.ID)
+		log.Printf("Found recipe id: %d", recipe.ID)
 		for ing_rows.Next() {
 			var ing Ingredient
 			if err := ing_rows.Scan(&ing.Name, &ing.Quantity); err != nil {
