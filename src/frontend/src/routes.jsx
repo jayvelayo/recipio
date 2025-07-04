@@ -1,6 +1,8 @@
 
 import { createBrowserRouter, Outlet } from "react-router";
-import { AddRecipeForm, RecipeList, ViewRecipe} from "./Recipes";
+import { AddRecipeForm } from "./pages/recipes/AddRecipe";
+import { RecipeList } from "./pages/recipes/RecipeList";
+import { ViewRecipe } from "./pages/recipes/ViewRecipe";
 import { HomePage, Layout } from "./App";
 
 export const sidebarLinks = [

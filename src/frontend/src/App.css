@@ -35,24 +35,8 @@
   flex-grow: 1;
 }
 
-
-.recipePreviewImage {
-  height:100px;
-  width: 100px;
-  background-color: #555;
-}
-
-.recipePreviewGrid {
-  display: flex;
-  gap: 20px;
-}
-
 .recipePreviewRowItem {
   display: flex;
-}
-
-.recipePreviewRowItem {
-  flex-grow: 1;
 }
 
 .row-uid {
