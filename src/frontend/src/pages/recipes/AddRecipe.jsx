@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { createRecipe } from "./recipe_apis";
+import { useNavigate } from "react-router";
 
 export function AddRecipeForm() {
   const navigate = useNavigate();
@@ -8,10 +9,14 @@ export function AddRecipeForm() {
 
   const mutation = useMutation({
     mutationFn: createRecipe,
-    onSuccess: (data, variable, context) => {
+    onSuccess: () => {
       // Invalidate recipes list to refetch
       queryClient.invalidateQueries(['recipes']);
+      navigate("/recipe");
     },
+    onError: () => {
+      alert("Failed to insert recipe")
+    }
   });
 
   const blankRecipe = {

@@ -21,18 +21,9 @@
   align-items: flex-end;
 }
 
-.sidebar {
-  display: flex;
-  flex-direction: column;
-  width: 200px;
-}
-
-.container {
-  display: flex;
-}
-
 .maincontent {
   flex-grow: 1;
+  margin-top: 2em;
 }
 
 .recipePreviewRowItem {

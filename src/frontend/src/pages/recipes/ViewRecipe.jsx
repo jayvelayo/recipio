@@ -1,7 +1,8 @@
 import { useParams } from "react-router";
 import { useQuery } from '@tanstack/react-query';
-import { getRecipes } from "./recipe_apis";
+import { getRecipeId } from "./recipe_apis";
 import { Link } from "react-router";
+import LoadingPage from '/src/pages/common/LoadingPage'
 
 function getClassFromTag(tag) {
   const tagColourMap = {
@@ -17,13 +18,12 @@ function getClassFromTag(tag) {
 export function ViewRecipe() {
   const param = useParams()
   const id = param.uid
-  const { data, isLoading, error } = useQuery({
-      queryKey: ['recipes'],
-      queryFn: getRecipes,
+  const { data, isLoading, isError, error } = useQuery({
+      queryKey: ['recipes', id],
+      queryFn: () => getRecipeId(id),
   });
-
-  if (isLoading) return <p>Loading...</p>
-  if (error) return <p>Error: {error.message}</p>
+  if (isLoading) return <LoadingPage />
+  if (isError) return <p>Error: {error.message}</p>
 
   let filtered = data.filter(item => item.id == id)
   const recipe = filtered[0];

@@ -228,10 +228,11 @@ func SetUpRoutes(
 	recipeDatabase RecipeDatabase,
 ) {
 	mux.Handle("OPTIONS /v1/recipe", handleCORS())
+	mux.Handle("GET /v1/recipe", withCORS(handleGetAllRecipe(recipeDatabase)))
 	mux.Handle("POST /v1/recipe", withCORS(handleCreateRecipe(recipeDatabase)))
 	mux.Handle("GET /v1/recipe/{id}", withCORS(handleGetRecipe(recipeDatabase)))
 	mux.Handle("DELETE /v1/recipe/{id}", withCORS(handleDeleteRecipe(recipeDatabase)))
-	mux.Handle("GET /v1/recipe", withCORS(handleGetAllRecipe(recipeDatabase)))
+	mux.Handle("OPTIONS /v1/recipe/{id}", handleCORS())
 }
 
 func newServer(

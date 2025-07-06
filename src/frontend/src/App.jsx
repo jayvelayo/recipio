@@ -17,11 +17,11 @@ export function Layout() {
   return (
     <>
       <HeaderBar />
-      <div className="container">
-        <SidebarNavigation />
-        <div className="maincontent">
-          <Outlet />
-        </div>
+      <div className='ui large top attached menu pointing'>
+          <SidebarNavigation/>
+      </div>
+      <div className="maincontent">
+        <Outlet />
       </div>
     </>
   )
@@ -55,16 +55,16 @@ function UserInfoBox() {
 
 function createNavigationLink({label, dst}, index) {
   return (
-    <NavLink key={index} to={dst}>{label}</NavLink>
+    <NavLink className="item" key={index} to={dst}>{label}</NavLink>
   )
 }
 
 function SidebarNavigation() {
 
   return (
-    <nav className="sidebar">
+    <>
        {sidebarLinks.map(createNavigationLink)}
-    </nav>
+    </>
   )
 }
 
