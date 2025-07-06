@@ -2,18 +2,28 @@ import './App.css'
 import { RouterProvider, NavLink, Outlet } from 'react-router'
 import { router, sidebarLinks} from './routes.jsx'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { useState } from 'react';
+import Login from '/src/pages/common/Login';
+import { AuthProvider, useAuth } from '/src/pages/common/AuthContext';
 
 const queryClient = new QueryClient();
 
 function App() {
     return (
-    <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
-    </QueryClientProvider>
+    <AuthProvider>
+      <QueryClientProvider client={queryClient}>
+        <RouterProvider router={router} />
+      </QueryClientProvider>
+    </AuthProvider>
     )
 }
 
 export function Layout() {
+  const { isAuthenticated } = useAuth();
+
+  if (!isAuthenticated) {
+    return <Login/>
+  }
   return (
     <>
       <HeaderBar />
@@ -25,10 +35,6 @@ export function Layout() {
       </div>
     </>
   )
-}
-
-const user = {
-  name: "blanker"
 }
 
 function HeaderBar() {
@@ -43,11 +49,11 @@ function HeaderBar() {
 }
 
 function UserInfoBox() {
+  const { user, logout } = useAuth();
   return (
     <div className="userinfo">
-      <b>{user.name}</b>
-      <a href="#">Profile</a>
-      <a href="#">Log out</a>
+      <b>{user.username}</b>
+      <a href="#" onClick={logout}>Log out</a>
     </div>
   )
 }
