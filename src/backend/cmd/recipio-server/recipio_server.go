@@ -7,6 +7,9 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+
+	rec "github.com/jayvelayo/recipio/internal/recipes"
+	"github.com/jayvelayo/recipio/internal/sqlite_db"
 )
 
 func decodeJson[T any](r *http.Request) (T, error) {
@@ -63,9 +66,9 @@ func returnError(w http.ResponseWriter, httpStatus int, status ResponseStatus, e
 	json.NewEncoder(w).Encode(errReponse)
 }
 
-func handleCreateRecipe(recipeDb RecipeDatabase) http.Handler {
-	convertBodyToRecipe := func(body RecipeBody) Recipe {
-		var recipe Recipe
+func handleCreateRecipe(recipeDb rec.RecipeDatabase) http.Handler {
+	convertBodyToRecipe := func(body RecipeBody) rec.Recipe {
+		var recipe rec.Recipe
 		recipe.Name = body.Name
 		recipe.Instructions = body.Instructions
 		for _, line := range body.Ingredients {
@@ -73,7 +76,7 @@ func handleCreateRecipe(recipeDb RecipeDatabase) http.Handler {
 			if len(words) == 0 {
 				continue
 			}
-			ingredients := Ingredient{
+			ingredients := rec.Ingredient{
 				Name:     words[len(words)-1],
 				Quantity: strings.Join(words[0:len(words)-1], " "),
 			}
@@ -102,7 +105,7 @@ func handleCreateRecipe(recipeDb RecipeDatabase) http.Handler {
 				returnError(w, http.StatusBadRequest, StatusMissingFields, "Missing fields")
 				return
 			}
-			recipeId, err := recipeDb.createRecipe(recipe)
+			recipeId, err := recipeDb.CreateRecipe(recipe)
 			if err != nil {
 				returnError(w, http.StatusBadRequest, StatusError, err.Error())
 				return
@@ -112,12 +115,11 @@ func handleCreateRecipe(recipeDb RecipeDatabase) http.Handler {
 				returnError(w, http.StatusBadRequest, StatusEncodingError, err.Error())
 				return
 			}
-			w.WriteHeader(http.StatusCreated)
 		},
 	)
 }
 
-func handleGetRecipe(recipeDb RecipeDatabase) http.Handler {
+func handleGetRecipe(recipeDb rec.RecipeDatabase) http.Handler {
 	return http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
 			id_str := r.PathValue("id")
@@ -126,15 +128,15 @@ func handleGetRecipe(recipeDb RecipeDatabase) http.Handler {
 				http.Error(w, "Failed to parse recipe id", http.StatusBadRequest)
 				return
 			}
-			var recipes Recipes
+			var recipes rec.Recipes
 			log.Printf("Looking for recipe id %d", id)
 			if id != 0 {
-				recipe, err := recipeDb.getRecipe(id)
+				recipe, err := recipeDb.GetRecipe(id)
 				if err != nil {
 					http.Error(w, err.Error(), http.StatusNotFound)
 					return
 				}
-				recipes = Recipes{recipe}
+				recipes = rec.Recipes{recipe}
 			}
 			err = encodeJson(w, http.StatusOK, recipes)
 			if err != nil {
@@ -145,11 +147,11 @@ func handleGetRecipe(recipeDb RecipeDatabase) http.Handler {
 	)
 }
 
-func handleGetAllRecipe(recipeDb RecipeDatabase) http.Handler {
+func handleGetAllRecipe(recipeDb rec.RecipeDatabase) http.Handler {
 	return http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
-			var recipes Recipes
-			recipes, err := recipeDb.getAllRecipes()
+			var recipes rec.Recipes
+			recipes, err := recipeDb.GetAllRecipes()
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusNotFound)
 				return
@@ -164,7 +166,7 @@ func handleGetAllRecipe(recipeDb RecipeDatabase) http.Handler {
 	)
 }
 
-func handleDeleteRecipe(recipeDb RecipeDatabase) http.Handler {
+func handleDeleteRecipe(recipeDb rec.RecipeDatabase) http.Handler {
 	return http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
 			id_str := r.PathValue("id")
@@ -175,7 +177,7 @@ func handleDeleteRecipe(recipeDb RecipeDatabase) http.Handler {
 			}
 			log.Printf("Deleting recipe id %d", id)
 			if id != 0 {
-				err := recipeDb.deleteRecipe(id)
+				err := recipeDb.DeleteRecipe(id)
 				if err != nil {
 					http.Error(w, err.Error(), http.StatusNotFound)
 					return
@@ -225,7 +227,7 @@ func handleCORS() http.Handler {
 
 func SetUpRoutes(
 	mux *http.ServeMux,
-	recipeDatabase RecipeDatabase,
+	recipeDatabase rec.RecipeDatabase,
 ) {
 	mux.Handle("OPTIONS /v1/recipe", handleCORS())
 	mux.Handle("GET /v1/recipe", withCORS(handleGetAllRecipe(recipeDatabase)))
@@ -236,7 +238,7 @@ func SetUpRoutes(
 }
 
 func newServer(
-	recipeDatabase RecipeDatabase,
+	recipeDatabase rec.RecipeDatabase,
 ) http.Handler {
 	mux := http.NewServeMux()
 	SetUpRoutes(
@@ -247,11 +249,11 @@ func newServer(
 }
 
 func main() {
-	recipeDb, err := initDb()
+	recipeDb, err := sqlite_db.InitDb("recipes.db")
 	if err != nil {
 		log.Fatalf("unable to init db")
 	}
-	defer recipeDb.closeDb()
+	defer recipeDb.CloseDb()
 	srv := newServer(recipeDb)
 
 	log.Println("Starting server on :4002...")

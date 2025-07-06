@@ -2,7 +2,7 @@
 
 function start_server() {
     cd 'backend';
-    go run .
+    go run cmd/recipio-server/recipio_server.go
 }
 
 function start_client() {

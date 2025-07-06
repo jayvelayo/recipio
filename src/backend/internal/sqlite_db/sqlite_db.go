@@ -1,55 +1,48 @@
-package main
+package sqlite_db
 
 import (
 	"bytes"
 	"database/sql"
+	"embed"
 	"fmt"
 	"log"
-	"os"
 	"strings"
 	"text/template"
 
+	rec "github.com/jayvelayo/recipio/internal/recipes"
 	_ "modernc.org/sqlite"
+)
+
+const (
+	RecipeTableName      string = "recipes"
+	IngredientsTableName string = "ingredients"
 )
 
 type SqliteDatabaseContext struct {
 	sqliteDb *sql.DB
-	schema   SchemaData
 }
 
-type SchemaData struct {
-	RecipesTable     string
-	IngredientsTable string
-}
+//go:embed schema.tmpl
+var tmplFS embed.FS
 
-func applySchema(schemaFile string, data SchemaData) (string, error) {
-	tmplContent, err := os.ReadFile(schemaFile)
+func getSchema(schemaFile string) (string, error) {
+	myTemplate, err := template.ParseFS(tmplFS, schemaFile)
 	if err != nil {
 		return "", err
 	}
-
-	tmpl, err := template.New("schema").Parse(string(tmplContent))
-	if err != nil {
-		return "", err
-	}
-
 	var schemaSQL bytes.Buffer
-	if err := tmpl.Execute(&schemaSQL, data); err != nil {
+	if err := myTemplate.Execute(&schemaSQL, nil); err != nil {
 		return "", err
 	}
 	return schemaSQL.String(), nil
 }
 
-func initDb() (RecipeDatabase, error) {
-	db, err := sql.Open("sqlite", "recipes.db")
+func InitDb(db_path string) (rec.RecipeDatabase, error) {
+	db, err := sql.Open("sqlite", db_path)
 	if err != nil {
 		log.Fatal(err)
 	}
-	schemaData := SchemaData{
-		RecipesTable:     "recipes",
-		IngredientsTable: "ingredients",
-	}
-	schema, err := applySchema("./schema.tmpl", schemaData)
+	schema, err := getSchema("schema.tmpl")
 	if err != nil {
 		return nil, fmt.Errorf("unable to create schema db: %v", err)
 	}
@@ -59,22 +52,21 @@ func initDb() (RecipeDatabase, error) {
 	}
 	sqliteDb := &SqliteDatabaseContext{
 		sqliteDb: db,
-		schema:   schemaData,
 	}
 	return sqliteDb, nil
 }
 
 const encodingChars = "***"
 
-func encodeInstructionList(list instructionList) string {
+func encodeInstructionList(list rec.InstructionList) string {
 	return strings.Join(list, encodingChars)
 }
 
-func decodeInstructionList(str string) instructionList {
+func decodeInstructionList(str string) rec.InstructionList {
 	return strings.Split(str, encodingChars)
 }
 
-func (iface *SqliteDatabaseContext) createRecipe(newRecipe Recipe) (uint64, error) {
+func (iface *SqliteDatabaseContext) CreateRecipe(newRecipe rec.Recipe) (uint64, error) {
 	db := iface.sqliteDb
 	tx, err := db.Begin()
 	if err != nil {
@@ -84,7 +76,7 @@ func (iface *SqliteDatabaseContext) createRecipe(newRecipe Recipe) (uint64, erro
 
 	// Insert recipe
 	instructions := encodeInstructionList(newRecipe.Instructions)
-	exec_query := fmt.Sprintf("INSERT INTO %s (name, instruction) VALUES (?, ?)", iface.schema.RecipesTable)
+	exec_query := fmt.Sprintf("INSERT INTO %s (name, instruction) VALUES (?, ?)", RecipeTableName)
 	res, err := tx.Exec(exec_query, newRecipe.Name, instructions)
 	if err != nil {
 		return 0, fmt.Errorf("failed to insert recipe: %w\ncmd: exec_query: %s", err, exec_query)
@@ -96,7 +88,7 @@ func (iface *SqliteDatabaseContext) createRecipe(newRecipe Recipe) (uint64, erro
 	}
 
 	// Insert ingredients
-	prepare_query := fmt.Sprintf("INSERT INTO %s (recipe_id, name, quantity) VALUES (?, ?, ?)", iface.schema.IngredientsTable)
+	prepare_query := fmt.Sprintf("INSERT INTO %s (recipe_id, name, quantity) VALUES (?, ?, ?)", IngredientsTableName)
 	stmt, err := tx.Prepare(prepare_query)
 	if err != nil {
 		return 0, fmt.Errorf("failed to prepare ingredient insert: %w", err)
@@ -119,40 +111,40 @@ func (iface *SqliteDatabaseContext) createRecipe(newRecipe Recipe) (uint64, erro
 	return uint64(recipeID), nil
 }
 
-func (ctx *SqliteDatabaseContext) getRecipe(id int) (Recipe, error) {
+func (ctx *SqliteDatabaseContext) GetRecipe(id int) (rec.Recipe, error) {
 	db := ctx.sqliteDb
-	var recipe Recipe
+	var recipe rec.Recipe
 	var instructions string
 	// Fetch recipe main data
-	query := fmt.Sprintf("SELECT id, name, instruction FROM %s WHERE id = ?", ctx.schema.RecipesTable)
+	query := fmt.Sprintf("SELECT id, name, instruction FROM %s WHERE id = ?", RecipeTableName)
 	row := db.QueryRow(query, id)
 	if err := row.Scan(&recipe.ID, &recipe.Name, &instructions); err != nil {
 		if err == sql.ErrNoRows {
-			return Recipe{}, fmt.Errorf("recipe with id %d not found", id)
+			return rec.Recipe{}, fmt.Errorf("recipe with id %d not found", id)
 		}
-		return Recipe{}, err
+		return rec.Recipe{}, err
 	}
 	recipe.Instructions = decodeInstructionList(instructions)
 
 	// Fetch ingredients
-	query = fmt.Sprintf("SELECT name, quantity FROM %s WHERE recipe_id = ?", ctx.schema.IngredientsTable)
+	query = fmt.Sprintf("SELECT name, quantity FROM %s WHERE recipe_id = ?", IngredientsTableName)
 	rows, err := db.Query(query, recipe.ID)
 	if err != nil {
-		return Recipe{}, err
+		return rec.Recipe{}, err
 	}
 	defer rows.Close()
 
 	for rows.Next() {
-		var ing Ingredient
+		var ing rec.Ingredient
 		if err := rows.Scan(&ing.Name, &ing.Quantity); err != nil {
-			return Recipe{}, err
+			return rec.Recipe{}, err
 		}
 		recipe.Ingredients = append(recipe.Ingredients, ing)
 	}
 	return recipe, nil
 }
 
-func (ctx *SqliteDatabaseContext) deleteRecipe(id int) error {
+func (ctx *SqliteDatabaseContext) DeleteRecipe(id int) error {
 	db := ctx.sqliteDb
 
 	tx, err := db.Begin()
@@ -162,12 +154,12 @@ func (ctx *SqliteDatabaseContext) deleteRecipe(id int) error {
 	defer tx.Rollback()
 
 	// Delete ingredients first (due to FK constraint)
-	delIngredients := fmt.Sprintf("DELETE FROM %s WHERE recipe_id = ?", ctx.schema.IngredientsTable)
+	delIngredients := fmt.Sprintf("DELETE FROM %s WHERE recipe_id = ?", IngredientsTableName)
 	if _, err := tx.Exec(delIngredients, id); err != nil {
 		return fmt.Errorf("failed to delete ingredients: %w", err)
 	}
 	// Delete the recipe
-	delRecipe := fmt.Sprintf("DELETE FROM %s WHERE id = ?", ctx.schema.RecipesTable)
+	delRecipe := fmt.Sprintf("DELETE FROM %s WHERE id = ?", RecipeTableName)
 	res, err := tx.Exec(delRecipe, id)
 	if err != nil {
 		return fmt.Errorf("failed to delete recipe: %w", err)
@@ -185,26 +177,26 @@ func (ctx *SqliteDatabaseContext) deleteRecipe(id int) error {
 	return nil
 }
 
-func (ctx *SqliteDatabaseContext) getAllRecipes() (Recipes, error) {
-	var recipes Recipes
+func (ctx *SqliteDatabaseContext) GetAllRecipes() (rec.Recipes, error) {
+	var recipes rec.Recipes
 	db := ctx.sqliteDb
 
-	query := fmt.Sprintf("SELECT id, name, instruction FROM %s", ctx.schema.RecipesTable)
+	query := fmt.Sprintf("SELECT id, name, instruction FROM %s", RecipeTableName)
 	rows, err := db.Query(query)
 	if err != nil {
-		return Recipes{}, err
+		return rec.Recipes{}, err
 	}
 	defer rows.Close()
 
 	for rows.Next() {
 		var instructions string
-		var recipe Recipe
+		var recipe rec.Recipe
 		if err := rows.Scan(&recipe.ID, &recipe.Name, &instructions); err != nil {
 			return recipes, err
 		}
 		recipe.Instructions = decodeInstructionList(instructions)
 		// Fetch ingredients
-		query = fmt.Sprintf("SELECT name, quantity FROM %s WHERE recipe_id = ?", ctx.schema.IngredientsTable)
+		query = fmt.Sprintf("SELECT name, quantity FROM %s WHERE recipe_id = ?", IngredientsTableName)
 		ing_rows, err := db.Query(query, recipe.ID)
 		if err != nil {
 			return recipes, err
@@ -212,7 +204,7 @@ func (ctx *SqliteDatabaseContext) getAllRecipes() (Recipes, error) {
 		defer rows.Close()
 		log.Printf("Found recipe id: %d", recipe.ID)
 		for ing_rows.Next() {
-			var ing Ingredient
+			var ing rec.Ingredient
 			if err := ing_rows.Scan(&ing.Name, &ing.Quantity); err != nil {
 				return recipes, err
 			}
@@ -223,6 +215,10 @@ func (ctx *SqliteDatabaseContext) getAllRecipes() (Recipes, error) {
 	return recipes, nil
 }
 
-func (ctx *SqliteDatabaseContext) closeDb() {
+func (ctx *SqliteDatabaseContext) AddRecipeToMealPlan(id int) error {
+	return nil
+}
+
+func (ctx *SqliteDatabaseContext) CloseDb() {
 	ctx.sqliteDb.Close()
 }

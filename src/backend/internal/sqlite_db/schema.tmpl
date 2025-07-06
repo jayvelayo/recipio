@@ -1,13 +1,13 @@
-CREATE TABLE IF NOT EXISTS {{.RecipesTable}} (
+CREATE TABLE IF NOT EXISTS recipes (
     id INTEGER PRIMARY KEY,
     name TEXT NOT NULL,
     instruction TEXT NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS {{.IngredientsTable}} (
+CREATE TABLE IF NOT EXISTS ingredients (
     id INTEGER PRIMARY KEY,
     recipe_id INTEGER NOT NULL,
     name TEXT NOT NULL,
     quantity TEXT,
-    FOREIGN KEY (recipe_id) REFERENCES {{.RecipesTable}}(id)
+    FOREIGN KEY (recipe_id) REFERENCES recipes(id)
 );

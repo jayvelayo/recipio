@@ -1,6 +1,6 @@
-package main
+package recipes
 
-type instructionList []string
+type InstructionList []string
 
 type Ingredient struct {
 	Name     string `json:"name"`
@@ -12,15 +12,16 @@ type Recipe struct {
 	Name         string          `json:"name"`
 	Description  string          `json:"description"`
 	Ingredients  []Ingredient    `json:"ingredients"`
-	Instructions instructionList `json:"instructions"`
+	Instructions InstructionList `json:"instructions"`
 }
 
 type Recipes []Recipe
 
 type RecipeDatabase interface {
-	createRecipe(recipe Recipe) (uint64, error)
-	getRecipe(id int) (Recipe, error)
-	getAllRecipes() (Recipes, error)
-	deleteRecipe(id int) error
-	closeDb()
+	CreateRecipe(recipe Recipe) (uint64, error)
+	GetRecipe(id int) (Recipe, error)
+	GetAllRecipes() (Recipes, error)
+	DeleteRecipe(id int) error
+	AddRecipeToMealPlan(id int) error
+	CloseDb()
 }
