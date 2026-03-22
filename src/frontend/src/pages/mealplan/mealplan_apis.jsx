@@ -1,4 +1,4 @@
-const API_BASE = 'http://localhost:4002';
+import { API_BASE } from '../../apiConfig';
 
 
 /** GET /meal-plans: returns array of { id, recipe_names } */

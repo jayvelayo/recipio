@@ -18,6 +18,38 @@ cd ../deploy/bin && ./recipio-server
 
 The server will serve both the SPA and API at `http://localhost:4002`
 
+### Configuration
+
+Both frontend and backend use a shared `.env` file for configuration:
+
+```bash
+# Backend CORS origins
+ALLOWED_ORIGINS=https://your-frontend-domain.com,http://192.168.1.170:4002
+
+# Frontend API base URL  
+VITE_API_BASE=https://your-backend-server:4002
+```
+
+**The backend automatically loads the `.env` file** - no need to export variables!
+
+### CORS Configuration
+
+When deploying with separate frontend and backend servers, configure allowed origins in the `.env` file:
+
+```bash
+ALLOWED_ORIGINS=https://your-frontend-domain.com,http://192.168.1.170:4002
+```
+
+**Localhost origins are always allowed** for development convenience.
+
+### Frontend Configuration
+
+Configure the frontend API base URL in the `.env` file:
+
+```bash
+VITE_API_BASE=http://your-backend-server:4002
+```
+
 ### Option 2: Development Mode
 ```bash
 # Terminal 1: Start backend

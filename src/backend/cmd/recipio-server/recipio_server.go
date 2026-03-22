@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -15,6 +16,43 @@ import (
 )
 
 const debugLogPath = "/Users/jayvee/repos/recipio/debug-95486f.log"
+
+// loadEnvFile loads environment variables from .env file
+func loadEnvFile() error {
+	file, err := os.Open(".env")
+	if err != nil {
+		// .env file doesn't exist, that's okay
+		return nil
+	}
+	defer file.Close()
+
+	// Read file line by line
+	content, err := os.ReadFile(".env")
+	if err != nil {
+		return err
+	}
+
+	lines := strings.Split(string(content), "\n")
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		// Skip empty lines and comments
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+
+		// Parse KEY=VALUE
+		parts := strings.SplitN(line, "=", 2)
+		if len(parts) == 2 {
+			key := strings.TrimSpace(parts[0])
+			value := strings.TrimSpace(parts[1])
+			// Remove quotes if present
+			value = strings.Trim(value, `"'`)
+			os.Setenv(key, value)
+		}
+	}
+
+	return nil
+}
 
 func debugLog(location, message string, data map[string]interface{}, hypothesisId string) {
 	payload, _ := json.Marshal(map[string]interface{}{
@@ -508,12 +546,19 @@ func handleDesignDeleteGroceryList(recipeDb rec.RecipeDatabase) http.Handler {
 	})
 }
 
-func withCORS(handler http.Handler) http.Handler {
+func withCORS(allowedOrigins []string, handler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		origin := r.Header.Get("Origin")
-		// Allow localhost and 127.0.0.1 origins (any port) so Vite and other dev servers work
-		corsAllowed := strings.HasPrefix(origin, "http://127.0.0.1") || strings.HasPrefix(origin, "https://127.0.0.1") ||
-			strings.HasPrefix(origin, "http://localhost") || strings.HasPrefix(origin, "https://localhost")
+
+		// Check if the origin is in the allowed list
+		corsAllowed := false
+		for _, allowedOrigin := range allowedOrigins {
+			if origin == allowedOrigin {
+				corsAllowed = true
+				break
+			}
+		}
+
 		// #region agent log
 		log.Println("recipio_server.go:withCORS", "CORS check", map[string]interface{}{"origin": origin, "corsAllowed": corsAllowed, "path": r.URL.Path}, "H1")
 		// #endregion
@@ -536,48 +581,104 @@ func withCORS(handler http.Handler) http.Handler {
 func SetUpRoutes(
 	mux *http.ServeMux,
 	recipeDatabase rec.RecipeDatabase,
+	allowedOrigins []string,
 ) {
 	// Serve static files from dist directory (copied during build)
-	mux.Handle("/", http.FileServer(http.Dir("./dist")))
+	ex, err := os.Executable()
+	if err != nil {
+		log.Fatal(err)
+	}
+	exeDir := filepath.Dir(ex)
+	mux.Handle("/", http.FileServer(http.Dir(filepath.Join(exeDir, "dist"))))
 
 	// Design API (doc/server_design.md)
-	mux.Handle("POST /recipes", withCORS(handleDesignCreateRecipe(recipeDatabase)))
-	mux.Handle("GET /recipes/{id}", withCORS(handleDesignGetRecipe(recipeDatabase)))
-	mux.Handle("GET /recipes", withCORS(handleDesignGetAllRecipes(recipeDatabase)))
-	mux.Handle("OPTIONS /recipes", withCORS(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})))
-	mux.Handle("GET /meal-plans", withCORS(handleDesignGetAllMealPlans(recipeDatabase)))
-	mux.Handle("POST /meal-plans", withCORS(handleDesignCreateMealPlan(recipeDatabase)))
-	mux.Handle("OPTIONS /meal-plans", withCORS(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})))
-	mux.Handle("DELETE /meal-plans/{meal_plan_id}", withCORS(handleDesignDeleteMealPlan(recipeDatabase)))
-	mux.Handle("OPTIONS /meal-plans/{meal_plan_id}", withCORS(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})))
-	mux.Handle("GET /grocery-list/{meal_plan_id}", withCORS(handleDesignGetGroceryList(recipeDatabase)))
-	mux.Handle("POST /grocery-lists", withCORS(handleDesignCreateGroceryList(recipeDatabase)))
-	mux.Handle("GET /grocery-lists", withCORS(handleDesignGetAllGroceryLists(recipeDatabase)))
-	mux.Handle("GET /grocery-lists/{id}", withCORS(handleDesignGetGroceryListByID(recipeDatabase)))
-	mux.Handle("PUT /grocery-lists/{id}", withCORS(handleDesignUpdateGroceryList(recipeDatabase)))
-	mux.Handle("DELETE /grocery-lists/{id}", withCORS(handleDesignDeleteGroceryList(recipeDatabase)))
-	mux.Handle("OPTIONS /grocery-lists", withCORS(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})))
-	mux.Handle("OPTIONS /grocery-lists/{id}", withCORS(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})))
+	mux.Handle("POST /recipes", withCORS(allowedOrigins, handleDesignCreateRecipe(recipeDatabase)))
+	mux.Handle("GET /recipes/{id}", withCORS(allowedOrigins, handleDesignGetRecipe(recipeDatabase)))
+	mux.Handle("GET /recipes", withCORS(allowedOrigins, handleDesignGetAllRecipes(recipeDatabase)))
+	mux.Handle("OPTIONS /recipes", withCORS(allowedOrigins, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})))
+	mux.Handle("GET /meal-plans", withCORS(allowedOrigins, handleDesignGetAllMealPlans(recipeDatabase)))
+	mux.Handle("POST /meal-plans", withCORS(allowedOrigins, handleDesignCreateMealPlan(recipeDatabase)))
+	mux.Handle("OPTIONS /meal-plans", withCORS(allowedOrigins, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})))
+	mux.Handle("DELETE /meal-plans/{meal_plan_id}", withCORS(allowedOrigins, handleDesignDeleteMealPlan(recipeDatabase)))
+	mux.Handle("OPTIONS /meal-plans/{meal_plan_id}", withCORS(allowedOrigins, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})))
+	mux.Handle("GET /grocery-list/{meal_plan_id}", withCORS(allowedOrigins, handleDesignGetGroceryList(recipeDatabase)))
+	mux.Handle("POST /grocery-lists", withCORS(allowedOrigins, handleDesignCreateGroceryList(recipeDatabase)))
+	mux.Handle("GET /grocery-lists", withCORS(allowedOrigins, handleDesignGetAllGroceryLists(recipeDatabase)))
+	mux.Handle("GET /grocery-lists/{id}", withCORS(allowedOrigins, handleDesignGetGroceryListByID(recipeDatabase)))
+	mux.Handle("PUT /grocery-lists/{id}", withCORS(allowedOrigins, handleDesignUpdateGroceryList(recipeDatabase)))
+	mux.Handle("DELETE /grocery-lists/{id}", withCORS(allowedOrigins, handleDesignDeleteGroceryList(recipeDatabase)))
+	mux.Handle("OPTIONS /grocery-lists", withCORS(allowedOrigins, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})))
+	mux.Handle("OPTIONS /grocery-lists/{id}", withCORS(allowedOrigins, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})))
 }
 
 func newServer(
 	recipeDatabase rec.RecipeDatabase,
+	allowedOrigins []string,
 ) http.Handler {
 	mux := http.NewServeMux()
 	SetUpRoutes(
 		mux,
 		recipeDatabase,
+		allowedOrigins,
 	)
 	return mux
 }
 
+func contains(slice []string, item string) bool {
+	for _, s := range slice {
+		if s == item {
+			return true
+		}
+	}
+	return false
+}
+
 func main() {
+	// Load environment variables from .env file
+	if err := loadEnvFile(); err != nil {
+		log.Printf("Warning: Could not load .env file: %v", err)
+	}
+
+	// Read allowed origins from environment variable
+	allowedOriginsStr := os.Getenv("ALLOWED_ORIGINS")
+	var allowedOrigins []string
+
+	// Always include localhost origins for development
+	localhostOrigins := []string{
+		"http://127.0.0.1:3000",
+		"https://127.0.0.1:3000",
+		"http://localhost:3000",
+		"https://localhost:3000",
+		"http://127.0.0.1:5173", // Vite dev server
+		"https://127.0.0.1:5173",
+		"http://localhost:5173",
+		"https://localhost:5173",
+	}
+
+	if allowedOriginsStr == "" {
+		// Default to localhost origins for development
+		allowedOrigins = localhostOrigins
+	} else {
+		// Start with localhost origins, then add configured ones
+		allowedOrigins = append(allowedOrigins, localhostOrigins...)
+
+		// Parse comma-separated list of additional origins
+		for _, origin := range strings.Split(allowedOriginsStr, ",") {
+			trimmed := strings.TrimSpace(origin)
+			if trimmed != "" && !contains(allowedOrigins, trimmed) {
+				allowedOrigins = append(allowedOrigins, trimmed)
+			}
+		}
+	}
+
+	log.Printf("Allowed CORS origins: %v", allowedOrigins)
+
 	recipeDb, err := sqlite_db.InitDb("recipes.db")
 	if err != nil {
 		log.Fatalf("unable to init db: %v", err)
 	}
 	defer recipeDb.CloseDb()
-	srv := newServer(recipeDb)
+	srv := newServer(recipeDb, allowedOrigins)
 
 	log.Println("Starting server on :4002...")
 	if err := http.ListenAndServe(":4002", srv); err != nil {

@@ -1,35 +1,34 @@
 #!/bin/bash
 
+REPO_ROOT=$(git rev-parse --show-toplevel)
+BIN_PATH="bin/"
+
 # Recipio Deployment Script
 set -e  # Exit on any error
 
 echo "🚀 Building Recipio for deployment..."
 
 # Create bin directory for build artifacts
-mkdir -p deploy/bin
+mkdir -p ${BIN_PATH}
 
 # Build frontend
 echo "📦 Building frontend..."
-cd src/frontend
-npm run build
-cd ../..
+npm run --prefix src/frontend build
 
 # Copy frontend build to bin directory
 echo "📋 Copying frontend assets..."
-cp -r src/frontend/dist deploy/bin/
+cp -r src/frontend/dist ${BIN_PATH}/
 
 # Build backend with embedded static files
 echo "🔨 Building backend..."
-cd src/backend
-go build -o ../deploy/bin/recipio-server ./cmd/recipio-server
-cd ..
+go build -C src/backend/cmd/recipio-server/ -o ${REPO_ROOT}/${BIN_PATH}/recipio-server
 
 echo "✅ Build complete!"
 echo ""
-echo "Build artifacts are in deploy/bin/"
+echo "Build artifacts are in ${BIN_PATH}/"
 echo ""
 echo "To run the application:"
-echo "  cd deploy/bin"
+echo "  cd ${BIN_PATH}"
 echo "  ./recipio-server"
 echo ""
 echo "The server will be available at http://localhost:4002"

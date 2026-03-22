@@ -1,4 +1,4 @@
-const API_BASE = 'http://localhost:4002';
+import { API_BASE } from '../../apiConfig';
 
 /** GET /grocery-lists: returns array of grocery lists */
 export function getGroceryLists() {

@@ -1,4 +1,4 @@
-const API_BASE = 'http://localhost:4002';
+import { API_BASE } from '../../apiConfig';
 
 // Design API: GET /recipes returns array of { id, name, ingredients, steps }
 export function getRecipes() {
