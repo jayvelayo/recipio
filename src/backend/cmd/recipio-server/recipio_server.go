@@ -14,7 +14,7 @@ import (
 	"github.com/jayvelayo/recipio/internal/sqlite_db"
 )
 
-const debugLogPath = "/home/jvelayo/repos/recipio/.cursor/debug-95486f.log"
+const debugLogPath = "/Users/jayvee/repos/recipio/debug-95486f.log"
 
 func debugLog(location, message string, data map[string]interface{}, hypothesisId string) {
 	payload, _ := json.Marshal(map[string]interface{}{
@@ -389,6 +389,125 @@ func handleDesignGetGroceryList(recipeDb rec.RecipeDatabase) http.Handler {
 	})
 }
 
+func handleDesignDeleteMealPlan(recipeDb rec.RecipeDatabase) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mealPlanID := r.PathValue("meal_plan_id")
+		if mealPlanID == "" {
+			http.Error(w, "Missing meal plan id", http.StatusBadRequest)
+			return
+		}
+		err := recipeDb.DeleteMealPlan(mealPlanID)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusNotFound)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	})
+}
+
+type designCreateGroceryListRequest struct {
+	Name       string                `json:"name"`
+	Items      []rec.GroceryListItem `json:"items"`
+	MealPlanID *string               `json:"meal_plan_id,omitempty"`
+}
+
+type designCreateGroceryListResponse struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
+func handleDesignCreateGroceryList(recipeDb rec.RecipeDatabase) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Content-Type") != "application/json" {
+			http.Error(w, "Content-Type must be application/json", http.StatusUnsupportedMediaType)
+			return
+		}
+		var body designCreateGroceryListRequest
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			http.Error(w, "Invalid JSON body", http.StatusBadRequest)
+			return
+		}
+		if body.Name == "" {
+			http.Error(w, "Name is required", http.StatusBadRequest)
+			return
+		}
+		id, err := recipeDb.CreateGroceryList(body.Name, body.Items, body.MealPlanID)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		encodeJson(w, http.StatusCreated, designCreateGroceryListResponse{ID: id, Name: body.Name})
+	})
+}
+
+func handleDesignGetAllGroceryLists(recipeDb rec.RecipeDatabase) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		lists, err := recipeDb.GetAllGroceryLists()
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		encodeJson(w, http.StatusOK, lists)
+	})
+}
+
+func handleDesignGetGroceryListByID(recipeDb rec.RecipeDatabase) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		id := r.PathValue("id")
+		if id == "" {
+			http.Error(w, "Missing grocery list id", http.StatusBadRequest)
+			return
+		}
+		list, err := recipeDb.GetGroceryListByID(id)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusNotFound)
+			return
+		}
+		encodeJson(w, http.StatusOK, list)
+	})
+}
+
+func handleDesignUpdateGroceryList(recipeDb rec.RecipeDatabase) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Content-Type") != "application/json" {
+			http.Error(w, "Content-Type must be application/json", http.StatusUnsupportedMediaType)
+			return
+		}
+		id := r.PathValue("id")
+		if id == "" {
+			http.Error(w, "Missing grocery list id", http.StatusBadRequest)
+			return
+		}
+		var items []rec.GroceryListItem
+		if err := json.NewDecoder(r.Body).Decode(&items); err != nil {
+			http.Error(w, "Invalid JSON body", http.StatusBadRequest)
+			return
+		}
+		err := recipeDb.UpdateGroceryList(id, items)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusNotFound)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	})
+}
+
+func handleDesignDeleteGroceryList(recipeDb rec.RecipeDatabase) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		id := r.PathValue("id")
+		if id == "" {
+			http.Error(w, "Missing grocery list id", http.StatusBadRequest)
+			return
+		}
+		err := recipeDb.DeleteGroceryList(id)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusNotFound)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	})
+}
+
 func withCORS(handler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		origin := r.Header.Get("Origin")
@@ -396,7 +515,7 @@ func withCORS(handler http.Handler) http.Handler {
 		corsAllowed := strings.HasPrefix(origin, "http://127.0.0.1") || strings.HasPrefix(origin, "https://127.0.0.1") ||
 			strings.HasPrefix(origin, "http://localhost") || strings.HasPrefix(origin, "https://localhost")
 		// #region agent log
-		debugLog("recipio_server.go:withCORS", "CORS check", map[string]interface{}{"origin": origin, "corsAllowed": corsAllowed, "path": r.URL.Path}, "H1")
+		log.Println("recipio_server.go:withCORS", "CORS check", map[string]interface{}{"origin": origin, "corsAllowed": corsAllowed, "path": r.URL.Path}, "H1")
 		// #endregion
 		if corsAllowed {
 			log.Printf("Setting headers")
@@ -414,25 +533,6 @@ func withCORS(handler http.Handler) http.Handler {
 	})
 }
 
-func handleCORS() http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		origin := r.Header.Get("Origin")
-		log.Printf("Received OPTIONS request from %s", origin)
-		allowOrigin := strings.HasPrefix(origin, "http://127.0.0.1") || strings.HasPrefix(origin, "https://127.0.0.1") ||
-			strings.HasPrefix(origin, "http://localhost") || strings.HasPrefix(origin, "https://localhost")
-		if allowOrigin {
-			log.Printf("Setting headers")
-			w.Header().Set("Access-Control-Allow-Origin", origin)
-			w.Header().Set("Vary", "Origin") // Important: informs caches that response varies by Origin
-			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-			w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
-			w.WriteHeader(http.StatusNoContent)
-		} else {
-			w.WriteHeader(http.StatusMethodNotAllowed)
-		}
-	})
-}
-
 func SetUpRoutes(
 	mux *http.ServeMux,
 	recipeDatabase rec.RecipeDatabase,
@@ -441,17 +541,20 @@ func SetUpRoutes(
 	mux.Handle("POST /recipes", withCORS(handleDesignCreateRecipe(recipeDatabase)))
 	mux.Handle("GET /recipes/{id}", withCORS(handleDesignGetRecipe(recipeDatabase)))
 	mux.Handle("GET /recipes", withCORS(handleDesignGetAllRecipes(recipeDatabase)))
+	mux.Handle("OPTIONS /recipes", withCORS(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})))
 	mux.Handle("GET /meal-plans", withCORS(handleDesignGetAllMealPlans(recipeDatabase)))
 	mux.Handle("POST /meal-plans", withCORS(handleDesignCreateMealPlan(recipeDatabase)))
+	mux.Handle("OPTIONS /meal-plans", withCORS(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})))
+	mux.Handle("DELETE /meal-plans/{meal_plan_id}", withCORS(handleDesignDeleteMealPlan(recipeDatabase)))
+	mux.Handle("OPTIONS /meal-plans/{meal_plan_id}", withCORS(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})))
 	mux.Handle("GET /grocery-list/{meal_plan_id}", withCORS(handleDesignGetGroceryList(recipeDatabase)))
-
-	// Legacy v1 API
-	mux.Handle("OPTIONS /v1/recipe", handleCORS())
-	mux.Handle("GET /v1/recipe", withCORS(handleGetAllRecipe(recipeDatabase)))
-	mux.Handle("POST /v1/recipe", withCORS(handleCreateRecipe(recipeDatabase)))
-	mux.Handle("GET /v1/recipe/{id}", withCORS(handleGetRecipe(recipeDatabase)))
-	mux.Handle("DELETE /v1/recipe/{id}", withCORS(handleDeleteRecipe(recipeDatabase)))
-	mux.Handle("OPTIONS /v1/recipe/{id}", handleCORS())
+	mux.Handle("POST /grocery-lists", withCORS(handleDesignCreateGroceryList(recipeDatabase)))
+	mux.Handle("GET /grocery-lists", withCORS(handleDesignGetAllGroceryLists(recipeDatabase)))
+	mux.Handle("GET /grocery-lists/{id}", withCORS(handleDesignGetGroceryListByID(recipeDatabase)))
+	mux.Handle("PUT /grocery-lists/{id}", withCORS(handleDesignUpdateGroceryList(recipeDatabase)))
+	mux.Handle("DELETE /grocery-lists/{id}", withCORS(handleDesignDeleteGroceryList(recipeDatabase)))
+	mux.Handle("OPTIONS /grocery-lists", withCORS(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})))
+	mux.Handle("OPTIONS /grocery-lists/{id}", withCORS(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})))
 }
 
 func newServer(

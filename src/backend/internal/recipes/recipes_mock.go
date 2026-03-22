@@ -53,6 +53,30 @@ func (db *MockRecipeDatabase) GetGroceryList(mealPlanID string) ([]string, error
 	return []string{"mock ingredient"}, nil
 }
 
+func (db *MockRecipeDatabase) DeleteMealPlan(mealPlanID string) error {
+	return nil
+}
+
+func (db *MockRecipeDatabase) CreateGroceryList(name string, items []GroceryListItem, mealPlanID *string) (string, error) {
+	return "1", nil
+}
+
+func (db *MockRecipeDatabase) GetAllGroceryLists() ([]GroceryList, error) {
+	return []GroceryList{}, nil
+}
+
+func (db *MockRecipeDatabase) GetGroceryListByID(id string) (GroceryList, error) {
+	return GroceryList{}, fmt.Errorf("not implemented")
+}
+
+func (db *MockRecipeDatabase) UpdateGroceryList(id string, items []GroceryListItem) error {
+	return nil
+}
+
+func (db *MockRecipeDatabase) DeleteGroceryList(id string) error {
+	return nil
+}
+
 func (db *MockRecipeDatabase) DeleteRecipe(id int) error {
 	if id < 1 || id > db.recipeCount {
 		return fmt.Errorf("recipe not found")

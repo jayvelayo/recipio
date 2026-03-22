@@ -5,12 +5,16 @@ import { RecipeList } from "./pages/recipes/RecipeList";
 import { ViewRecipe } from "./pages/recipes/ViewRecipe";
 import Mealplan from "./pages/mealplan/Mealplan";
 import { AddMealplan } from "./pages/mealplan/AddMealplan";
+import Grocery from "./pages/grocery/Grocery";
+import { AddGroceryList } from "./pages/grocery/AddGroceryList";
+import { GroceryList } from "./pages/grocery/GroceryList";
 import { HomePage, Layout } from "./App";
 
 export const sidebarLinks = [
   {label: "Home", dst: "/"},
   {label: "Recipes", dst: "/recipe"},
   {label: "Mealplan", dst: "/mealplan"},
+  {label: "Grocery", dst: "/grocery"},
 ]
 
 function ErrorPage() {
@@ -41,6 +45,14 @@ export const router = createBrowserRouter([
                 children: [
                     { index: true, Component: Mealplan },
                     { path: "add", Component: AddMealplan },
+                ],
+            },
+            {
+                path: "/grocery",
+                children: [
+                    { index: true, Component: Grocery },
+                    { path: "add", Component: AddGroceryList },
+                    { path: "view/:id", Component: GroceryList },
                 ],
             }
         ]

@@ -23,6 +23,21 @@ type MealPlanSummary struct {
 	RecipeNames []string `json:"recipe_names"`
 }
 
+// GroceryListItem represents an item in a grocery list
+type GroceryListItem struct {
+	Name     string `json:"name"`
+	Quantity string `json:"quantity"`
+	Checked  bool   `json:"checked"`
+}
+
+// GroceryList represents a grocery list
+type GroceryList struct {
+	ID         string            `json:"id"`
+	Name       string            `json:"name"`
+	Items      []GroceryListItem `json:"items"`
+	MealPlanID *string           `json:"meal_plan_id,omitempty"` // optional, if created from meal plan
+}
+
 type RecipeDatabase interface {
 	CreateRecipe(recipe Recipe) (uint64, error)
 	GetRecipe(id int) (Recipe, error)
@@ -32,5 +47,11 @@ type RecipeDatabase interface {
 	CreateMealPlan(recipeIDs []string) (mealPlanID string, err error)
 	GetAllMealPlans() ([]MealPlanSummary, error)
 	GetGroceryList(mealPlanID string) (ingredients []string, err error)
+	DeleteMealPlan(mealPlanID string) error
+	CreateGroceryList(name string, items []GroceryListItem, mealPlanID *string) (string, error)
+	GetAllGroceryLists() ([]GroceryList, error)
+	GetGroceryListByID(id string) (GroceryList, error)
+	UpdateGroceryList(id string, items []GroceryListItem) error
+	DeleteGroceryList(id string) error
 	CloseDb()
 }

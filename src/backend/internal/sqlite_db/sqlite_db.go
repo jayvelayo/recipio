@@ -353,6 +353,227 @@ func (ctx *SqliteDatabaseContext) GetGroceryList(mealPlanID string) ([]string, e
 	return ingredients, nil
 }
 
+func (ctx *SqliteDatabaseContext) DeleteMealPlan(mealPlanID string) error {
+	db := ctx.sqliteDb
+	planID, err := strconv.ParseInt(mealPlanID, 10, 64)
+	if err != nil || planID < 1 {
+		return fmt.Errorf("invalid meal plan id: %s", mealPlanID)
+	}
+
+	tx, err := db.Begin()
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	// Delete from meal_plan_recipes first
+	delLinks := fmt.Sprintf("DELETE FROM %s WHERE meal_plan_id = ?", MealPlanRecipesTableName)
+	_, err = tx.Exec(delLinks, planID)
+	if err != nil {
+		return fmt.Errorf("failed to delete meal plan recipes: %w", err)
+	}
+
+	// Delete the meal plan
+	delPlan := fmt.Sprintf("DELETE FROM %s WHERE id = ?", MealPlanTableName)
+	_, err = tx.Exec(delPlan, planID)
+	if err != nil {
+		return fmt.Errorf("failed to delete meal plan: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit: %w", err)
+	}
+	return nil
+}
+
+func (ctx *SqliteDatabaseContext) CreateGroceryList(name string, items []rec.GroceryListItem, mealPlanID *string) (string, error) {
+	db := ctx.sqliteDb
+	tx, err := db.Begin()
+	if err != nil {
+		return "", fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	// Insert grocery list
+	insList := "INSERT INTO grocery_lists (name, meal_plan_id) VALUES (?, ?)"
+	var res sql.Result
+	if mealPlanID != nil {
+		planID, err := strconv.ParseInt(*mealPlanID, 10, 64)
+		if err != nil {
+			return "", fmt.Errorf("invalid meal plan id: %s", *mealPlanID)
+		}
+		res, err = tx.Exec(insList, name, planID)
+	} else {
+		res, err = tx.Exec(insList, name, nil)
+	}
+	if err != nil {
+		return "", fmt.Errorf("failed to insert grocery list: %w", err)
+	}
+
+	listID, err := res.LastInsertId()
+	if err != nil {
+		return "", fmt.Errorf("failed to get grocery list id: %w", err)
+	}
+
+	// Insert items
+	insItem := "INSERT INTO grocery_list_items (grocery_list_id, name, quantity, checked) VALUES (?, ?, ?, ?)"
+	stmt, err := tx.Prepare(insItem)
+	if err != nil {
+		return "", fmt.Errorf("failed to prepare item insert: %w", err)
+	}
+	defer stmt.Close()
+
+	for _, item := range items {
+		_, err = stmt.Exec(listID, item.Name, item.Quantity, item.Checked)
+		if err != nil {
+			return "", fmt.Errorf("failed to insert item: %w", err)
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return "", fmt.Errorf("failed to commit: %w", err)
+	}
+	return strconv.FormatInt(listID, 10), nil
+}
+
+func (ctx *SqliteDatabaseContext) GetAllGroceryLists() ([]rec.GroceryList, error) {
+	db := ctx.sqliteDb
+	query := "SELECT id, name, meal_plan_id FROM grocery_lists ORDER BY id"
+	rows, err := db.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var lists []rec.GroceryList
+	for rows.Next() {
+		var list rec.GroceryList
+		var mealPlanID sql.NullInt64
+		if err := rows.Scan(&list.ID, &list.Name, &mealPlanID); err != nil {
+			return nil, err
+		}
+		if mealPlanID.Valid {
+			mpID := strconv.FormatInt(mealPlanID.Int64, 10)
+			list.MealPlanID = &mpID
+		}
+
+		// Get items
+		items, err := ctx.getGroceryListItems(list.ID)
+		if err != nil {
+			return nil, err
+		}
+		list.Items = items
+		lists = append(lists, list)
+	}
+	return lists, nil
+}
+
+func (ctx *SqliteDatabaseContext) getGroceryListItems(listID string) ([]rec.GroceryListItem, error) {
+	db := ctx.sqliteDb
+	query := "SELECT name, quantity, checked FROM grocery_list_items WHERE grocery_list_id = ? ORDER BY id"
+	rows, err := db.Query(query, listID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var items []rec.GroceryListItem
+	for rows.Next() {
+		var item rec.GroceryListItem
+		if err := rows.Scan(&item.Name, &item.Quantity, &item.Checked); err != nil {
+			return nil, err
+		}
+		items = append(items, item)
+	}
+	return items, nil
+}
+
+func (ctx *SqliteDatabaseContext) GetGroceryListByID(id string) (rec.GroceryList, error) {
+	db := ctx.sqliteDb
+	query := "SELECT id, name, meal_plan_id FROM grocery_lists WHERE id = ?"
+	var list rec.GroceryList
+	var mealPlanID sql.NullInt64
+	err := db.QueryRow(query, id).Scan(&list.ID, &list.Name, &mealPlanID)
+	if err != nil {
+		return rec.GroceryList{}, fmt.Errorf("grocery list not found: %w", err)
+	}
+	if mealPlanID.Valid {
+		mpID := strconv.FormatInt(mealPlanID.Int64, 10)
+		list.MealPlanID = &mpID
+	}
+
+	items, err := ctx.getGroceryListItems(id)
+	if err != nil {
+		return rec.GroceryList{}, err
+	}
+	list.Items = items
+	return list, nil
+}
+
+func (ctx *SqliteDatabaseContext) UpdateGroceryList(id string, items []rec.GroceryListItem) error {
+	db := ctx.sqliteDb
+	tx, err := db.Begin()
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	// Delete existing items
+	delQuery := "DELETE FROM grocery_list_items WHERE grocery_list_id = ?"
+	_, err = tx.Exec(delQuery, id)
+	if err != nil {
+		return fmt.Errorf("failed to delete existing items: %w", err)
+	}
+
+	// Insert new items
+	insQuery := "INSERT INTO grocery_list_items (grocery_list_id, name, quantity, checked) VALUES (?, ?, ?, ?)"
+	stmt, err := tx.Prepare(insQuery)
+	if err != nil {
+		return fmt.Errorf("failed to prepare item insert: %w", err)
+	}
+	defer stmt.Close()
+
+	for _, item := range items {
+		_, err = stmt.Exec(id, item.Name, item.Quantity, item.Checked)
+		if err != nil {
+			return fmt.Errorf("failed to insert item: %w", err)
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit: %w", err)
+	}
+	return nil
+}
+
+func (ctx *SqliteDatabaseContext) DeleteGroceryList(id string) error {
+	db := ctx.sqliteDb
+	tx, err := db.Begin()
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	// Delete items first
+	delItems := "DELETE FROM grocery_list_items WHERE grocery_list_id = ?"
+	_, err = tx.Exec(delItems, id)
+	if err != nil {
+		return fmt.Errorf("failed to delete grocery list items: %w", err)
+	}
+
+	// Delete list
+	delList := "DELETE FROM grocery_lists WHERE id = ?"
+	_, err = tx.Exec(delList, id)
+	if err != nil {
+		return fmt.Errorf("failed to delete grocery list: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit: %w", err)
+	}
+	return nil
+}
+
 func (ctx *SqliteDatabaseContext) CloseDb() {
 	ctx.sqliteDb.Close()
 }
