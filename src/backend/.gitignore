@@ -1,3 +1,4 @@
 recipio
 recipes.db
 test_recipes.db
+**/recipio-server

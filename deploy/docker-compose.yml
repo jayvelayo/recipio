@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  recipio:
+    build: .
+    ports:
+      - "4002:4002"
+    volumes:
+      # Mount the database file for persistence
+      - ./data:/root/data
+    environment:
+      - RECIPIO_DB_PATH=/root/data/recipes.db
+    restart: unless-stopped
+
+# For production with external database, you could add:
+# services:
+#   db:
+#     image: sqlite3
+#     volumes:
+#       - ./data:/data
+#
+#   recipio:
+#     build: .
+#     ports:
+#       - "4002:4002"
+#     depends_on:
+#       - db
+#     environment:
+#       - RECIPIO_DB_PATH=/data/recipes.db

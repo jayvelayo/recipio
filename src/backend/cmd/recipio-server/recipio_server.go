@@ -537,6 +537,9 @@ func SetUpRoutes(
 	mux *http.ServeMux,
 	recipeDatabase rec.RecipeDatabase,
 ) {
+	// Serve static files from dist directory (copied during build)
+	mux.Handle("/", http.FileServer(http.Dir("./dist")))
+
 	// Design API (doc/server_design.md)
 	mux.Handle("POST /recipes", withCORS(handleDesignCreateRecipe(recipeDatabase)))
 	mux.Handle("GET /recipes/{id}", withCORS(handleDesignGetRecipe(recipeDatabase)))
