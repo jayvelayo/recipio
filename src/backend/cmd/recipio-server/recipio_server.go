@@ -5,12 +5,62 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	rec "github.com/jayvelayo/recipio/internal/recipes"
 	"github.com/jayvelayo/recipio/internal/sqlite_db"
 )
+
+const debugLogPath = "/home/jvelayo/repos/recipio/.cursor/debug-95486f.log"
+
+func debugLog(location, message string, data map[string]interface{}, hypothesisId string) {
+	payload, _ := json.Marshal(map[string]interface{}{
+		"sessionId": "95486f", "location": location, "message": message, "data": data,
+		"timestamp": time.Now().UnixMilli(), "hypothesisId": hypothesisId,
+	})
+	f, err := os.OpenFile(debugLogPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return
+	}
+	f.Write(payload)
+	f.Write([]byte("\n"))
+	f.Close()
+}
+
+// Design API types (doc/server_design.md)
+type designRecipeRequest struct {
+	Name        string   `json:"name"`
+	Ingredients []string `json:"ingredients"`
+	Steps       []string `json:"steps"`
+}
+
+type designCreateRecipeResponse struct {
+	ID      string `json:"id"`
+	Message string `json:"message"`
+}
+
+type designRecipeResponse struct {
+	ID          string   `json:"id"`
+	Name        string   `json:"name"`
+	Ingredients []string `json:"ingredients"`
+	Steps       []string `json:"steps"`
+}
+
+type designCreateMealPlanRequest struct {
+	Recipes []string `json:"recipes"`
+}
+
+type designCreateMealPlanResponse struct {
+	ID      string `json:"id"`
+	Message string `json:"message"`
+}
+
+type designGroceryListResponse struct {
+	Ingredients []string `json:"ingredients"`
+}
 
 func decodeJson[T any](r *http.Request) (T, error) {
 	var v T
@@ -188,11 +238,167 @@ func handleDeleteRecipe(recipeDb rec.RecipeDatabase) http.Handler {
 	)
 }
 
+func designRecipeToInternal(body designRecipeRequest) rec.Recipe {
+	var recipe rec.Recipe
+	recipe.Name = body.Name
+	recipe.Instructions = rec.InstructionList(body.Steps)
+	for _, line := range body.Ingredients {
+		words := strings.Fields(line)
+		if len(words) == 0 {
+			continue
+		}
+		recipe.Ingredients = append(recipe.Ingredients, rec.Ingredient{
+			Name:     words[len(words)-1],
+			Quantity: strings.Join(words[0:len(words)-1], " "),
+		})
+	}
+	return recipe
+}
+
+func internalRecipeToDesign(recipe rec.Recipe) designRecipeResponse {
+	idStr := strconv.Itoa(recipe.ID)
+	ingStrings := make([]string, 0, len(recipe.Ingredients))
+	for _, ing := range recipe.Ingredients {
+		s := strings.TrimSpace(ing.Quantity) + " " + strings.TrimSpace(ing.Name)
+		ingStrings = append(ingStrings, strings.TrimSpace(s))
+	}
+	return designRecipeResponse{
+		ID:          idStr,
+		Name:        recipe.Name,
+		Ingredients: ingStrings,
+		Steps:       recipe.Instructions,
+	}
+}
+
+func handleDesignCreateRecipe(recipeDb rec.RecipeDatabase) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Content-Type") != "application/json" {
+			http.Error(w, "Content-Type must be application/json", http.StatusUnsupportedMediaType)
+			return
+		}
+		var body designRecipeRequest
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			http.Error(w, "Invalid JSON body", http.StatusBadRequest)
+			return
+		}
+		recipe := designRecipeToInternal(body)
+		if recipe.Name == "" || len(recipe.Ingredients) == 0 || len(recipe.Instructions) == 0 {
+			http.Error(w, "Missing required fields: name, ingredients, steps", http.StatusBadRequest)
+			return
+		}
+		recipeID, err := recipeDb.CreateRecipe(recipe)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		encodeJson(w, http.StatusCreated, designCreateRecipeResponse{
+			ID:      strconv.FormatUint(recipeID, 10),
+			Message: "Recipe created successfully",
+		})
+	})
+}
+
+func handleDesignGetRecipe(recipeDb rec.RecipeDatabase) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		idStr := r.PathValue("id")
+		id, err := strconv.Atoi(idStr)
+		if err != nil || id < 1 {
+			http.Error(w, "Invalid recipe id", http.StatusBadRequest)
+			return
+		}
+		recipe, err := recipeDb.GetRecipe(id)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusNotFound)
+			return
+		}
+		encodeJson(w, http.StatusOK, internalRecipeToDesign(recipe))
+	})
+}
+
+func handleDesignGetAllRecipes(recipeDb rec.RecipeDatabase) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		recipes, err := recipeDb.GetAllRecipes()
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		list := make([]designRecipeResponse, 0, len(recipes))
+		for _, recipe := range recipes {
+			list = append(list, internalRecipeToDesign(recipe))
+		}
+		encodeJson(w, http.StatusOK, list)
+	})
+}
+
+func handleDesignGetAllMealPlans(recipeDb rec.RecipeDatabase) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// #region agent log
+		debugLog("recipio_server.go:handleDesignGetAllMealPlans", "GET meal-plans received", map[string]interface{}{"path": r.URL.Path}, "H4")
+		// #endregion
+		plans, err := recipeDb.GetAllMealPlans()
+		if err != nil {
+			// #region agent log
+			debugLog("recipio_server.go:handleDesignGetAllMealPlans", "GetAllMealPlans error", map[string]interface{}{"err": err.Error()}, "H3")
+			// #endregion
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		// #region agent log
+		debugLog("recipio_server.go:handleDesignGetAllMealPlans", "sending response", map[string]interface{}{"planCount": len(plans)}, "H3")
+		// #endregion
+		encodeJson(w, http.StatusOK, plans)
+	})
+}
+
+func handleDesignCreateMealPlan(recipeDb rec.RecipeDatabase) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Content-Type") != "application/json" {
+			http.Error(w, "Content-Type must be application/json", http.StatusUnsupportedMediaType)
+			return
+		}
+		var body designCreateMealPlanRequest
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			http.Error(w, "Invalid JSON body", http.StatusBadRequest)
+			return
+		}
+		mealPlanID, err := recipeDb.CreateMealPlan(body.Recipes)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		encodeJson(w, http.StatusCreated, designCreateMealPlanResponse{
+			ID:      mealPlanID,
+			Message: "Meal plan created successfully",
+		})
+	})
+}
+
+func handleDesignGetGroceryList(recipeDb rec.RecipeDatabase) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mealPlanID := r.PathValue("meal_plan_id")
+		if mealPlanID == "" {
+			http.Error(w, "Missing meal plan id", http.StatusBadRequest)
+			return
+		}
+		ingredients, err := recipeDb.GetGroceryList(mealPlanID)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusNotFound)
+			return
+		}
+		encodeJson(w, http.StatusOK, designGroceryListResponse{Ingredients: ingredients})
+	})
+}
+
 func withCORS(handler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		origin := r.Header.Get("Origin")
-		// Allow all localhost origins (any port)
-		if strings.HasPrefix(origin, "http://127.0.0.1") || strings.HasPrefix(origin, "https://127.0.0.1") {
+		// Allow localhost and 127.0.0.1 origins (any port) so Vite and other dev servers work
+		corsAllowed := strings.HasPrefix(origin, "http://127.0.0.1") || strings.HasPrefix(origin, "https://127.0.0.1") ||
+			strings.HasPrefix(origin, "http://localhost") || strings.HasPrefix(origin, "https://localhost")
+		// #region agent log
+		debugLog("recipio_server.go:withCORS", "CORS check", map[string]interface{}{"origin": origin, "corsAllowed": corsAllowed, "path": r.URL.Path}, "H1")
+		// #endregion
+		if corsAllowed {
 			log.Printf("Setting headers")
 			w.Header().Set("Access-Control-Allow-Origin", origin)
 			w.Header().Set("Vary", "Origin") // Important: informs caches that response varies by Origin
@@ -212,7 +418,9 @@ func handleCORS() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		origin := r.Header.Get("Origin")
 		log.Printf("Received OPTIONS request from %s", origin)
-		if strings.HasPrefix(origin, "http://127.0.0.1") || strings.HasPrefix(origin, "https://127.0.0.1") {
+		allowOrigin := strings.HasPrefix(origin, "http://127.0.0.1") || strings.HasPrefix(origin, "https://127.0.0.1") ||
+			strings.HasPrefix(origin, "http://localhost") || strings.HasPrefix(origin, "https://localhost")
+		if allowOrigin {
 			log.Printf("Setting headers")
 			w.Header().Set("Access-Control-Allow-Origin", origin)
 			w.Header().Set("Vary", "Origin") // Important: informs caches that response varies by Origin
@@ -229,6 +437,15 @@ func SetUpRoutes(
 	mux *http.ServeMux,
 	recipeDatabase rec.RecipeDatabase,
 ) {
+	// Design API (doc/server_design.md)
+	mux.Handle("POST /recipes", withCORS(handleDesignCreateRecipe(recipeDatabase)))
+	mux.Handle("GET /recipes/{id}", withCORS(handleDesignGetRecipe(recipeDatabase)))
+	mux.Handle("GET /recipes", withCORS(handleDesignGetAllRecipes(recipeDatabase)))
+	mux.Handle("GET /meal-plans", withCORS(handleDesignGetAllMealPlans(recipeDatabase)))
+	mux.Handle("POST /meal-plans", withCORS(handleDesignCreateMealPlan(recipeDatabase)))
+	mux.Handle("GET /grocery-list/{meal_plan_id}", withCORS(handleDesignGetGroceryList(recipeDatabase)))
+
+	// Legacy v1 API
 	mux.Handle("OPTIONS /v1/recipe", handleCORS())
 	mux.Handle("GET /v1/recipe", withCORS(handleGetAllRecipe(recipeDatabase)))
 	mux.Handle("POST /v1/recipe", withCORS(handleCreateRecipe(recipeDatabase)))
@@ -251,7 +468,7 @@ func newServer(
 func main() {
 	recipeDb, err := sqlite_db.InitDb("recipes.db")
 	if err != nil {
-		log.Fatalf("unable to init db")
+		log.Fatalf("unable to init db: %v", err)
 	}
 	defer recipeDb.CloseDb()
 	srv := newServer(recipeDb)

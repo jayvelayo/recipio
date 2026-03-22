@@ -381,3 +381,352 @@ func TestServer_e2e_multiple_recipes(t *testing.T) {
 		}
 	})
 }
+
+// --- E2E tests per doc/server_design.md ---
+
+// Design API types (design uses "steps" and specific response shapes)
+type DesignRecipeRequest struct {
+	Name        string   `json:"name"`
+	Ingredients []string `json:"ingredients"`
+	Steps       []string `json:"steps"`
+}
+
+type DesignCreateRecipeResponse struct {
+	ID      string `json:"id"`
+	Message string `json:"message"`
+}
+
+type DesignRecipeResponse struct {
+	ID          string   `json:"id"`
+	Name        string   `json:"name"`
+	Ingredients []string `json:"ingredients"`
+	Steps       []string `json:"steps"`
+}
+
+type DesignCreateMealPlanRequest struct {
+	Recipes []string `json:"recipes"`
+}
+
+type DesignCreateMealPlanResponse struct {
+	ID      string `json:"id"`
+	Message string `json:"message"`
+}
+
+type DesignGroceryListResponse struct {
+	Ingredients []string `json:"ingredients"`
+}
+
+type DesignMealPlanSummary struct {
+	ID          string   `json:"id"`
+	RecipeNames []string `json:"recipe_names"`
+}
+
+func TestServer_e2e_design_GET_meal_plans(t *testing.T) {
+	testDb, err := initTestDb()
+	if err != nil {
+		t.Fatalf("unable to initialize test db: %v", err)
+	}
+	defer testDb.CloseDb()
+	handler := createFakeServer(testDb)
+
+	// Create two recipes
+	var r1ID, r2ID string
+	for _, name := range []string{"Pasta", "Salad"} {
+		body := DesignRecipeRequest{Name: name, Ingredients: []string{"x"}, Steps: []string{"step"}}
+		req, _ := createRequestWithBody("POST", "/recipes", body)
+		rec := httptest.NewRecorder()
+		handler.ServeHTTP(rec, req)
+		if rec.Code != http.StatusCreated {
+			t.Fatalf("setup create recipe: expected 201, got %d", rec.Code)
+		}
+		var res DesignCreateRecipeResponse
+		if err := json.NewDecoder(rec.Body).Decode(&res); err != nil {
+			t.Fatalf("decode: %v", err)
+		}
+		if name == "Pasta" {
+			r1ID = res.ID
+		} else {
+			r2ID = res.ID
+		}
+	}
+
+	// Create first meal plan (Pasta only)
+	req, _ := createRequestWithBody("POST", "/meal-plans", DesignCreateMealPlanRequest{Recipes: []string{r1ID}})
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("create meal plan 1: expected 201, got %d body: %s", rec.Code, getResponseBody(rec))
+	}
+	var mp1 DesignCreateMealPlanResponse
+	if err := json.NewDecoder(rec.Body).Decode(&mp1); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+
+	// Create second meal plan (Pasta + Salad)
+	req, _ = createRequestWithBody("POST", "/meal-plans", DesignCreateMealPlanRequest{Recipes: []string{r1ID, r2ID}})
+	rec = httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("create meal plan 2: expected 201, got %d body: %s", rec.Code, getResponseBody(rec))
+	}
+
+	// GET /meal-plans
+	req, _ = http.NewRequest("GET", "/meal-plans", nil)
+	rec = httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Errorf("GET /meal-plans: expected 200, got %d body: %s", rec.Code, getResponseBody(rec))
+	}
+	var list []DesignMealPlanSummary
+	if err := json.NewDecoder(rec.Body).Decode(&list); err != nil {
+		t.Fatalf("decode GET /meal-plans: %v", err)
+	}
+	if len(list) != 2 {
+		t.Errorf("GET /meal-plans: expected 2 meal plans, got %d", len(list))
+	}
+	// First meal plan: one recipe (Pasta)
+	if len(list[0].RecipeNames) != 1 || list[0].RecipeNames[0] != "Pasta" {
+		t.Errorf("GET /meal-plans: first plan expected [Pasta], got %v", list[0].RecipeNames)
+	}
+	// Second meal plan: two recipes (Pasta, Salad)
+	if len(list[1].RecipeNames) != 2 {
+		t.Errorf("GET /meal-plans: second plan expected 2 recipe names, got %v", list[1].RecipeNames)
+	}
+	namesOk := (list[1].RecipeNames[0] == "Pasta" && list[1].RecipeNames[1] == "Salad") ||
+		(list[1].RecipeNames[0] == "Salad" && list[1].RecipeNames[1] == "Pasta")
+	if !namesOk {
+		t.Errorf("GET /meal-plans: second plan expected Pasta and Salad, got %v", list[1].RecipeNames)
+	}
+	if list[0].ID == "" || list[1].ID == "" {
+		t.Error("GET /meal-plans: expected non-empty id for each plan")
+	}
+}
+
+func TestServer_e2e_design_POST_recipes(t *testing.T) {
+	testDb, err := initTestDb()
+	if err != nil {
+		t.Fatalf("unable to initialize test db: %v", err)
+	}
+	defer testDb.CloseDb()
+	handler := createFakeServer(testDb)
+
+	body := DesignRecipeRequest{
+		Name:        "Test Recipe",
+		Ingredients: []string{"2 eggs", "1 cup flour"},
+		Steps:       []string{"Mix ingredients", "Bake at 350F"},
+	}
+	req, err := createRequestWithBody("POST", "/recipes", body)
+	if err != nil {
+		t.Fatalf("create request: %v", err)
+	}
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusCreated {
+		t.Errorf("POST /recipes: expected status %d, got %d body: %s", http.StatusCreated, rec.Code, getResponseBody(rec))
+	}
+	var res DesignCreateRecipeResponse
+	if err := json.NewDecoder(rec.Body).Decode(&res); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if res.ID == "" {
+		t.Error("POST /recipes: expected non-empty id")
+	}
+	if res.Message != "Recipe created successfully" {
+		t.Errorf("POST /recipes: expected message 'Recipe created successfully', got %q", res.Message)
+	}
+}
+
+func TestServer_e2e_design_GET_recipes_id(t *testing.T) {
+	testDb, err := initTestDb()
+	if err != nil {
+		t.Fatalf("unable to initialize test db: %v", err)
+	}
+	defer testDb.CloseDb()
+	handler := createFakeServer(testDb)
+
+	// Create a recipe first
+	body := DesignRecipeRequest{
+		Name:        "Fetch Me",
+		Ingredients: []string{"1 apple", "2 bananas"},
+		Steps:       []string{"Chop", "Serve"},
+	}
+	req, _ := createRequestWithBody("POST", "/recipes", body)
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("setup create: expected 201, got %d", rec.Code)
+	}
+	var createRes DesignCreateRecipeResponse
+	if err := json.NewDecoder(rec.Body).Decode(&createRes); err != nil {
+		t.Fatalf("decode create response: %v", err)
+	}
+
+	// GET /recipes/{id}
+	req, _ = http.NewRequest("GET", "/recipes/"+createRes.ID, nil)
+	rec = httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Errorf("GET /recipes/{id}: expected 200, got %d body: %s", rec.Code, getResponseBody(rec))
+	}
+	var recipe DesignRecipeResponse
+	if err := json.NewDecoder(rec.Body).Decode(&recipe); err != nil {
+		t.Fatalf("decode GET response: %v", err)
+	}
+	if recipe.ID != createRes.ID {
+		t.Errorf("GET /recipes/{id}: id mismatch: want %q got %q", createRes.ID, recipe.ID)
+	}
+	if recipe.Name != "Fetch Me" {
+		t.Errorf("GET /recipes/{id}: name want 'Fetch Me', got %q", recipe.Name)
+	}
+	if len(recipe.Ingredients) != 2 || len(recipe.Steps) != 2 {
+		t.Errorf("GET /recipes/{id}: ingredients len=%d steps len=%d", len(recipe.Ingredients), len(recipe.Steps))
+	}
+}
+
+func TestServer_e2e_design_GET_recipes(t *testing.T) {
+	testDb, err := initTestDb()
+	if err != nil {
+		t.Fatalf("unable to initialize test db: %v", err)
+	}
+	defer testDb.CloseDb()
+	handler := createFakeServer(testDb)
+
+	// Create two recipes
+	for _, name := range []string{"First", "Second"} {
+		body := DesignRecipeRequest{Name: name, Ingredients: []string{"x"}, Steps: []string{"step"}}
+		req, _ := createRequestWithBody("POST", "/recipes", body)
+		rec := httptest.NewRecorder()
+		handler.ServeHTTP(rec, req)
+		if rec.Code != http.StatusCreated {
+			t.Fatalf("setup create: expected 201, got %d", rec.Code)
+		}
+	}
+
+	req, _ := http.NewRequest("GET", "/recipes", nil)
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Errorf("GET /recipes: expected 200, got %d body: %s", rec.Code, getResponseBody(rec))
+	}
+	var list []DesignRecipeResponse
+	if err := json.NewDecoder(rec.Body).Decode(&list); err != nil {
+		t.Fatalf("decode GET /recipes: %v", err)
+	}
+	if len(list) != 2 {
+		t.Errorf("GET /recipes: expected 2 recipes, got %d", len(list))
+	}
+	// @TODO should check both recipes actual data (names, ingredients, steps, etc)
+	// @TODO these kinds of tests are suited to be separated into t.Run blocks
+	// if common setup, and multiple assertions are needed.
+}
+
+func TestServer_e2e_design_POST_meal_plans(t *testing.T) {
+	testDb, err := initTestDb()
+	if err != nil {
+		t.Fatalf("unable to initialize test db: %v", err)
+	}
+	defer testDb.CloseDb()
+	handler := createFakeServer(testDb)
+
+	// Create two recipes and get their ids
+	var ids []string
+	for _, name := range []string{"A", "B"} {
+		body := DesignRecipeRequest{Name: name, Ingredients: []string{"ing"}, Steps: []string{"s"}}
+		req, _ := createRequestWithBody("POST", "/recipes", body)
+		rec := httptest.NewRecorder()
+		handler.ServeHTTP(rec, req)
+		if rec.Code != http.StatusCreated {
+			t.Fatalf("setup create: expected 201, got %d", rec.Code)
+		}
+		var res DesignCreateRecipeResponse
+		if err := json.NewDecoder(rec.Body).Decode(&res); err != nil {
+			t.Fatalf("decode: %v", err)
+		}
+		ids = append(ids, res.ID)
+	}
+
+	mealBody := DesignCreateMealPlanRequest{Recipes: ids}
+	req, _ := createRequestWithBody("POST", "/meal-plans", mealBody)
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusCreated {
+		t.Errorf("POST /meal-plans: expected 201, got %d body: %s", rec.Code, getResponseBody(rec))
+	}
+	var res DesignCreateMealPlanResponse
+	if err := json.NewDecoder(rec.Body).Decode(&res); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if res.ID == "" {
+		t.Error("POST /meal-plans: expected non-empty id")
+	}
+	if res.Message != "Meal plan created successfully" {
+		t.Errorf("POST /meal-plans: expected message 'Meal plan created successfully', got %q", res.Message)
+	}
+}
+
+func TestServer_e2e_design_GET_grocery_list(t *testing.T) {
+	testDb, err := initTestDb()
+	if err != nil {
+		t.Fatalf("unable to initialize test db: %v", err)
+	}
+	defer testDb.CloseDb()
+	handler := createFakeServer(testDb)
+
+	// Create recipes and meal plan
+	var ids []string
+	body1 := DesignRecipeRequest{
+		Name:        "Recipe One",
+		Ingredients: []string{"2 eggs", "1 cup milk"},
+		Steps:       []string{"Mix", "Cook"},
+	}
+	req, _ := createRequestWithBody("POST", "/recipes", body1)
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("create recipe 1: %d", rec.Code)
+	}
+	var r1 DesignCreateRecipeResponse
+	json.NewDecoder(rec.Body).Decode(&r1)
+	ids = append(ids, r1.ID)
+
+	body2 := DesignRecipeRequest{
+		Name:        "Recipe Two",
+		Ingredients: []string{"3 eggs", "2 cups flour"},
+		Steps:       []string{"Combine", "Bake"},
+	}
+	req, _ = createRequestWithBody("POST", "/recipes", body2)
+	rec = httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("create recipe 2: %d", rec.Code)
+	}
+	var r2 DesignCreateRecipeResponse
+	json.NewDecoder(rec.Body).Decode(&r2)
+	ids = append(ids, r2.ID)
+
+	mealBody := DesignCreateMealPlanRequest{Recipes: ids}
+	req, _ = createRequestWithBody("POST", "/meal-plans", mealBody)
+	rec = httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("create meal plan: %d", rec.Code)
+	}
+	var mealRes DesignCreateMealPlanResponse
+	json.NewDecoder(rec.Body).Decode(&mealRes)
+
+	req, _ = http.NewRequest("GET", "/grocery-list/"+mealRes.ID, nil)
+	rec = httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Errorf("GET /grocery-list/{id}: expected 200, got %d body: %s", rec.Code, getResponseBody(rec))
+	}
+	var grocery DesignGroceryListResponse
+	if err := json.NewDecoder(rec.Body).Decode(&grocery); err != nil {
+		t.Fatalf("decode grocery list: %v", err)
+	}
+	// Should contain ingredients from both recipes (design: aggregated list)
+	if len(grocery.Ingredients) < 2 {
+		t.Errorf("GET /grocery-list: expected at least 2 ingredients, got %d: %v", len(grocery.Ingredients), grocery.Ingredients)
+	}
+}

@@ -41,6 +41,18 @@ func (db *MockRecipeDatabase) AddRecipeToMealPlan(id int) error {
 	return nil
 }
 
+func (db *MockRecipeDatabase) CreateMealPlan(recipeIDs []string) (string, error) {
+	return "1", nil
+}
+
+func (db *MockRecipeDatabase) GetAllMealPlans() ([]MealPlanSummary, error) {
+	return nil, nil
+}
+
+func (db *MockRecipeDatabase) GetGroceryList(mealPlanID string) ([]string, error) {
+	return []string{"mock ingredient"}, nil
+}
+
 func (db *MockRecipeDatabase) DeleteRecipe(id int) error {
 	if id < 1 || id > db.recipeCount {
 		return fmt.Errorf("recipe not found")

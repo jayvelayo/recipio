@@ -6,6 +6,7 @@ import (
 	"embed"
 	"fmt"
 	"log"
+	"strconv"
 	"strings"
 	"text/template"
 
@@ -14,8 +15,10 @@ import (
 )
 
 const (
-	RecipeTableName      string = "recipes"
-	IngredientsTableName string = "ingredients"
+	RecipeTableName          string = "recipes"
+	IngredientsTableName     string = "ingredients"
+	MealPlanTableName        string = "meal_plan"
+	MealPlanRecipesTableName string = "meal_plan_recipes"
 )
 
 type SqliteDatabaseContext struct {
@@ -201,15 +204,15 @@ func (ctx *SqliteDatabaseContext) GetAllRecipes() (rec.Recipes, error) {
 		if err != nil {
 			return recipes, err
 		}
-		defer rows.Close()
-		log.Printf("Found recipe id: %d", recipe.ID)
 		for ing_rows.Next() {
 			var ing rec.Ingredient
 			if err := ing_rows.Scan(&ing.Name, &ing.Quantity); err != nil {
+				ing_rows.Close()
 				return recipes, err
 			}
 			recipe.Ingredients = append(recipe.Ingredients, ing)
 		}
+		ing_rows.Close()
 		recipes = append(recipes, recipe)
 	}
 	return recipes, nil
@@ -217,6 +220,137 @@ func (ctx *SqliteDatabaseContext) GetAllRecipes() (rec.Recipes, error) {
 
 func (ctx *SqliteDatabaseContext) AddRecipeToMealPlan(id int) error {
 	return nil
+}
+
+const defaultUserID = 0
+
+func (ctx *SqliteDatabaseContext) CreateMealPlan(recipeIDs []string) (string, error) {
+	db := ctx.sqliteDb
+	tx, err := db.Begin()
+	if err != nil {
+		return "", fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	insPlan := fmt.Sprintf("INSERT INTO %s (user_id) VALUES (?)", MealPlanTableName)
+	res, err := tx.Exec(insPlan, defaultUserID)
+	if err != nil {
+		return "", fmt.Errorf("failed to insert meal plan: %w", err)
+	}
+	mealPlanID, err := res.LastInsertId()
+	if err != nil {
+		return "", fmt.Errorf("failed to get meal plan id: %w", err)
+	}
+
+	insLink := fmt.Sprintf("INSERT INTO %s (meal_plan_id, recipe_id) VALUES (?, ?)", MealPlanRecipesTableName)
+	stmt, err := tx.Prepare(insLink)
+	if err != nil {
+		return "", fmt.Errorf("failed to prepare meal_plan_recipes insert: %w", err)
+	}
+	defer stmt.Close()
+
+	for _, idStr := range recipeIDs {
+		id, err := strconv.Atoi(strings.TrimSpace(idStr))
+		if err != nil || id < 1 {
+			continue
+		}
+		_, err = stmt.Exec(mealPlanID, id)
+		if err != nil {
+			return "", fmt.Errorf("failed to link recipe %d to meal plan: %w", id, err)
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return "", fmt.Errorf("failed to commit: %w", err)
+	}
+	return strconv.FormatInt(mealPlanID, 10), nil
+}
+
+func (ctx *SqliteDatabaseContext) GetAllMealPlans() ([]rec.MealPlanSummary, error) {
+	db := ctx.sqliteDb
+	planQuery := fmt.Sprintf("SELECT id FROM %s ORDER BY id", MealPlanTableName)
+	planRows, err := db.Query(planQuery)
+	if err != nil {
+		return nil, err
+	}
+	defer planRows.Close()
+
+	var plans []rec.MealPlanSummary
+	for planRows.Next() {
+		var planID int64
+		if err := planRows.Scan(&planID); err != nil {
+			return nil, err
+		}
+		namesQuery := fmt.Sprintf(
+			"SELECT r.name FROM %s r INNER JOIN %s mpr ON r.id = mpr.recipe_id WHERE mpr.meal_plan_id = ? ORDER BY mpr.recipe_id",
+			RecipeTableName, MealPlanRecipesTableName)
+		nameRows, err := db.Query(namesQuery, planID)
+		if err != nil {
+			return nil, err
+		}
+		var names []string
+		for nameRows.Next() {
+			var name string
+			if err := nameRows.Scan(&name); err != nil {
+				nameRows.Close()
+				return nil, err
+			}
+			names = append(names, name)
+		}
+		nameRows.Close()
+		plans = append(plans, rec.MealPlanSummary{
+			ID:          strconv.FormatInt(planID, 10),
+			RecipeNames: names,
+		})
+	}
+	return plans, nil
+}
+
+func (ctx *SqliteDatabaseContext) GetGroceryList(mealPlanID string) ([]string, error) {
+	db := ctx.sqliteDb
+	planID, err := strconv.ParseInt(mealPlanID, 10, 64)
+	if err != nil || planID < 1 {
+		return nil, fmt.Errorf("invalid meal plan id: %s", mealPlanID)
+	}
+
+	query := fmt.Sprintf("SELECT recipe_id FROM %s WHERE meal_plan_id = ?", MealPlanRecipesTableName)
+	rows, err := db.Query(query, planID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var recipeIDs []int
+	for rows.Next() {
+		var rid int
+		if err := rows.Scan(&rid); err != nil {
+			return nil, err
+		}
+		recipeIDs = append(recipeIDs, rid)
+	}
+
+	var ingredients []string
+	ingQuery := fmt.Sprintf("SELECT name, quantity FROM %s WHERE recipe_id = ?", IngredientsTableName)
+	for _, rid := range recipeIDs {
+		ingRows, err := db.Query(ingQuery, rid)
+		if err != nil {
+			return nil, err
+		}
+		for ingRows.Next() {
+			var name, quantity string
+			if err := ingRows.Scan(&name, &quantity); err != nil {
+				ingRows.Close()
+				return nil, err
+			}
+			s := strings.TrimSpace(quantity) + " " + strings.TrimSpace(name)
+			s = strings.TrimSpace(s)
+			if s != "" {
+				ingredients = append(ingredients, s)
+			}
+		}
+		ingRows.Close()
+	}
+	return ingredients, nil
 }
 
 func (ctx *SqliteDatabaseContext) CloseDb() {

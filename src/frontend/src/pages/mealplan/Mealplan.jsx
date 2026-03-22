@@ -1,5 +1,5 @@
-
+import { MealplanList } from './MealplanList';
 
 export default function Mealplan() {
-    return <h1>Under construction</h1>
+  return <MealplanList />;
 }

@@ -3,6 +3,8 @@ import { createBrowserRouter, Outlet } from "react-router";
 import { AddRecipeForm } from "./pages/recipes/AddRecipe";
 import { RecipeList } from "./pages/recipes/RecipeList";
 import { ViewRecipe } from "./pages/recipes/ViewRecipe";
+import Mealplan from "./pages/mealplan/Mealplan";
+import { AddMealplan } from "./pages/mealplan/AddMealplan";
 import { HomePage, Layout } from "./App";
 
 export const sidebarLinks = [
@@ -36,7 +38,10 @@ export const router = createBrowserRouter([
             },
             {
                 path: "/mealplan",
-                Component: ErrorPage,
+                children: [
+                    { index: true, Component: Mealplan },
+                    { path: "add", Component: AddMealplan },
+                ],
             }
         ]
     },

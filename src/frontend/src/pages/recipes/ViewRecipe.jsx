@@ -25,16 +25,15 @@ export function ViewRecipe() {
   if (isLoading) return <LoadingPage />
   if (isError) return <p>Error: {error.message}</p>
 
-  let filtered = data.filter(item => item.id == id)
-  const recipe = filtered[0];
+  // Design API returns single recipe { id, name, ingredients[], steps[] }
+  const recipe = data;
+  const ingredients = recipe.ingredients ?? [];
+  const steps = recipe.steps ?? recipe.instructions ?? [];
 
-  const listIngredients = recipe.ingredients.map((item, index) => 
-    <li key={index}>{item.quantity} {item.name}</li>
-  )
-
-  const listSteps = recipe.instructions.map((step, index) =>
-      <li key={index}>{step}</li>
-  )
+  const listIngredients = ingredients.map((item, index) => (
+    <li key={index}>{typeof item === 'string' ? item : `${item.quantity ?? ''} ${item.name ?? ''}`.trim()}</li>
+  ));
+  const listSteps = steps.map((step, index) => <li key={index}>{step}</li>);
 
   const listTags = recipe.tags ? recipe.tags.map((tag) => (
     <a className={"ui tag label " + getClassFromTag(tag)} key={tag}>{tag}</a> 
