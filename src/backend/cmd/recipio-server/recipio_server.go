@@ -645,10 +645,10 @@ func main() {
 
 	// Always include localhost origins for development
 	localhostOrigins := []string{
-		"http://127.0.0.1:3000",
-		"https://127.0.0.1:3000",
-		"http://localhost:3000",
-		"https://localhost:3000",
+		"http://127.0.0.1:4002",
+		"https://127.0.0.1:4002",
+		"http://localhost:4002",
+		"https://localhost:4002",
 		"http://127.0.0.1:5173", // Vite dev server
 		"https://127.0.0.1:5173",
 		"http://localhost:5173",

@@ -4,19 +4,29 @@ Personal project to learn different technology stack. Using a real-world problem
 
 Also see: [Relevant XKCD](https://xkcd.com/927/)
 
-## 🚀 Quick Start
+### Development Setup
 
-### Development
-```bash
-# Install frontend dependencies
-cd src/frontend && npm install
+1. **Configure environment:**
+   ```bash
+   # Edit .env file with your settings
+   ALLOWED_ORIGINS=http://192.168.1.170:4002
+   VITE_API_BASE=http://192.168.1.170:4002
+   ```
 
-# Start backend (Terminal 1)
-cd src/backend && go run ./cmd/recipio-server
+2. **Setup symlinks:**
+   ```bash
+   ./setup.sh
+   # Or manually: cd src/frontend && ln -sf ../.env .env
+   ```
 
-# Start frontend dev server (Terminal 2)
-cd src/frontend && npm run dev
-```
+3. **Start development servers:**
+   ```bash
+   # Terminal 1: Backend
+   ./bin/recipio-server
+
+   # Terminal 2: Frontend
+   cd src/frontend && npm run dev
+   ```
 
 ### Production Deployment
 ```bash
@@ -35,6 +45,11 @@ ALLOWED_ORIGINS=http://192.168.1.170:4002,https://yourdomain.com
 
 # Frontend API base URL
 VITE_API_BASE=http://192.168.1.170:4002
+```
+
+**Setup:** Create a symlink for the frontend to access the `.env` file:
+```bash
+cd src/frontend && ln -sf ../.env .env
 ```
 
 **The backend automatically loads the `.env` file** - no need to export variables or rebuild!

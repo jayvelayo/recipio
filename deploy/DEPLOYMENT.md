@@ -50,6 +50,11 @@ Configure the frontend API base URL in the `.env` file:
 VITE_API_BASE=http://your-backend-server:4002
 ```
 
+**Important:** Create a symlink from the frontend directory to the root `.env` file:
+```bash
+cd src/frontend && ln -sf ../.env .env
+```
+
 ### Option 2: Development Mode
 ```bash
 # Terminal 1: Start backend
