@@ -3,6 +3,7 @@ import { deleteRecipe, getRecipes } from "./recipe_apis";
 import { Form } from "react-router";
 import LoadingPage from '/src/pages/common/LoadingPage'
 import { useEffect, useState } from 'react';
+import { FiTrash2, FiSearch, FiPlus } from 'react-icons/fi';
 
 function displayTagsToString(tags) {
   if (typeof tags === 'undefined') {
@@ -13,37 +14,50 @@ function displayTagsToString(tags) {
 
 function RecipeDeleteIcon({ id }) {
   const queryClient = useQueryClient();
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const mutation = useMutation({
     mutationFn: deleteRecipe,
     onSuccess: () => {
-      // Invalidate recipes list to refetch
       queryClient.invalidateQueries(['recipes']);
+      setIsDeleting(false);
     },
-    onError: (error) => { alert(`Failed to delete: ${error}` ) }
+    onError: (error) => { 
+      alert(`Failed to delete: ${error}`);
+      setIsDeleting(false);
+    }
   });
 
   const handleClick = () => {
-    mutation.mutate(id)
+    if (window.confirm('Are you sure you want to delete this recipe?')) {
+      setIsDeleting(true);
+      mutation.mutate(id);
+    }
   }
-  if (id === undefined) {
-    id = 0
-  }
+  
   return (
-    <div>
-      <i className='recipeTrashButton link large aligned trash red icon' onClick={handleClick}></i>
-    </div>
+    <button
+      onClick={handleClick}
+      disabled={isDeleting}
+      className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+      title="Delete recipe"
+    >
+      <FiTrash2 size={18} />
+    </button>
   )
 }
 
 function RecipeRowPreview({recipe}) {
   return (
-    <div className="item">
-      <div className='right floated content'>
-        <RecipeDeleteIcon id={recipe.id}/>
-      </div>
-      <a className="header" href={`/recipe/view/${recipe.id}`} state={{ recipe }}>{recipe.name}</a>
-      Tags: {displayTagsToString(recipe.tags)}
+    <div className="flex items-center justify-between p-4 border-b border-gray-200 hover:bg-gray-50 transition">
+      <a 
+        href={`/recipe/view/${recipe.id}`} 
+        className="flex-1 cursor-pointer"
+      >
+        <h3 className="font-semibold text-gray-900 hover:text-indigo-600">{recipe.name}</h3>
+        <p className="text-sm text-gray-500 mt-1">Tags: {displayTagsToString(recipe.tags)}</p>
+      </a>
+      <RecipeDeleteIcon id={recipe.id}/>
     </div>
   )
 }
@@ -59,21 +73,37 @@ function RecipeListRows({recipes}) {
     setRecipeItems(results);
   }, [searchQuery, recipes]);
 
-  if (recipes === undefined) {
-    return <>No recipes found?</>
+  if (recipes === undefined || recipes.length === 0) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-gray-500 mb-4">No recipes found yet. Create your first recipe!</p>
+      </div>
+    )
   }
+
   return (
     <>
-      <div class="ui icon input">
-        <input type="text" placeholder="Search..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}/>
-        <i class="search link icon" />
+      {/* Search Bar */}
+      <div className="mb-6">
+        <div className="relative">
+          <FiSearch className="absolute left-3 top-3 text-gray-400" size={20} />
+          <input 
+            type="text" 
+            placeholder="Search recipes..." 
+            value={searchQuery} 
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition"
+          />
+        </div>
       </div>
-      <div className="ui middle large aligned divided list">
-      { recipeItems?.sort(
-          (a, b) => a.name.localeCompare(b.name))
-        .map( (recipe) => (
-          <RecipeRowPreview recipe={recipe} key={recipe.id}/>
-      ))}
+
+      {/* Recipe List */}
+      <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+        { recipeItems?.sort(
+            (a, b) => a.name.localeCompare(b.name))
+          .map( (recipe) => (
+            <RecipeRowPreview recipe={recipe} key={recipe.id}/>
+        ))}
       </div>
     </>
   )
@@ -86,13 +116,23 @@ export function RecipeList() {
   });
 
   if (isLoading) return <LoadingPage />
-  if (error) return <p>Error: {error.message}</p>
+  if (error) return <p className="text-red-600">Error: {error.message}</p>
+  
   return (
-    <>
-    <RecipeListRows recipes={data}/>
-    <Form action="/recipe/add/">
-      <button className="ui button primary" type="submit">Create new recipe</button>
-    </Form>
-    </>
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-bold text-gray-900">Recipes</h1>
+        <Form action="/recipe/add/" className="inline">
+          <button 
+            className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 transition" 
+            type="submit"
+          >
+            <FiPlus size={20} />
+            New Recipe
+          </button>
+        </Form>
+      </div>
+      <RecipeListRows recipes={data}/>
+    </div>
   )
 }

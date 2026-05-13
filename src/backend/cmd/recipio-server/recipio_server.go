@@ -589,7 +589,22 @@ func SetUpRoutes(
 		log.Fatal(err)
 	}
 	exeDir := filepath.Dir(ex)
-	mux.Handle("/", http.FileServer(http.Dir(filepath.Join(exeDir, "dist"))))
+	distDir := filepath.Join(exeDir, "dist")
+
+	// Custom SPA file server that serves index.html for non-existent files
+	spaHandler := func(w http.ResponseWriter, r *http.Request) {
+		// Check if the requested file exists
+		filePath := filepath.Join(distDir, r.URL.Path)
+		if _, err := os.Stat(filePath); os.IsNotExist(err) {
+			// File doesn't exist, serve index.html for SPA routing
+			http.ServeFile(w, r, filepath.Join(distDir, "index.html"))
+			return
+		}
+		// File exists, serve it normally
+		http.FileServer(http.Dir(distDir)).ServeHTTP(w, r)
+	}
+
+	mux.Handle("/", http.HandlerFunc(spaHandler))
 
 	// Design API (doc/server_design.md)
 	mux.Handle("POST /recipes", withCORS(allowedOrigins, handleDesignCreateRecipe(recipeDatabase)))
