@@ -1,6 +1,5 @@
 import { API_BASE } from '../../apiConfig';
 
-// Design API: GET /recipes returns array of { id, name, ingredients, steps }
 export function getRecipes() {
   return fetch(`${API_BASE}/recipes`, { mode: "cors" })
     .then(res => {
@@ -9,7 +8,6 @@ export function getRecipes() {
     });
 }
 
-// Design API: GET /recipes/{id} returns single { id, name, ingredients, steps }
 export function getRecipeId(id) {
   return fetch(`${API_BASE}/recipes/${id}`, { mode: "cors" })
     .then(res => {
@@ -18,7 +16,6 @@ export function getRecipeId(id) {
     });
 }
 
-// Design API: POST /recipes body { name, ingredients, steps }, response { id, message }
 export function createRecipe(newRecipe) {
   const body = {
     name: newRecipe.name,
@@ -36,7 +33,6 @@ export function createRecipe(newRecipe) {
   });
 }
 
-// Parse raw recipe text using AI
 export function parseRecipe(rawRecipeText) {
   return fetch(`${API_BASE}/parse-recipe`, {
     method: 'POST',
@@ -52,7 +48,6 @@ export function parseRecipe(rawRecipeText) {
   });
 }
 
-// DELETE not in design API; keep using v1 for now
 export function deleteRecipe(id) {
   return fetch(`${API_BASE}/recipes/${id}`, {
     method: 'DELETE',

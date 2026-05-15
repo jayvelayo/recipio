@@ -1,7 +1,6 @@
 import { API_BASE } from '../../apiConfig';
 
 
-/** GET /meal-plans: returns array of { id, recipe_names } */
 export function getMealPlans() {
   const url = `${API_BASE}/meal-plans`;
   return fetch(url, { mode: 'cors' })
@@ -17,7 +16,6 @@ export function getMealPlans() {
     });
 }
 
-/** POST /meal-plans: body { recipes: string[] } (recipe IDs), returns { id, message } */
 export function createMealPlan(recipeIds) {
   return fetch(`${API_BASE}/meal-plans`, {
     method: 'POST',
@@ -30,7 +28,6 @@ export function createMealPlan(recipeIds) {
   });
 }
 
-/** GET /grocery-list/{meal_plan_id}: returns { ingredients: string[] } */
 export function getGroceryList(mealPlanId) {
   const url = `${API_BASE}/grocery-list/${mealPlanId}`;
   return fetch(url, { mode: 'cors' })
@@ -43,7 +40,6 @@ export function getGroceryList(mealPlanId) {
     });
 }
 
-/** DELETE /meal-plans/{meal_plan_id}: deletes the meal plan */
 export function deleteMealPlan(mealPlanId) {
   return fetch(`${API_BASE}/meal-plans/${mealPlanId}`, {
     method: 'DELETE',

@@ -4,7 +4,6 @@ import (
 	rec "github.com/jayvelayo/recipio/internal/recipes"
 )
 
-// Design API types (doc/server_design.md)
 type designRecipeRequest struct {
 	Name        string   `json:"name"`
 	Ingredients []string `json:"ingredients"`

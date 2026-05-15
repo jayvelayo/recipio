@@ -16,38 +16,27 @@ func SetUpRoutes(
 	recipeDatabase rec.RecipeDatabase,
 	allowedOrigins []string,
 ) {
-	// ============================================================
-	// STATIC FILE SERVING
-	// ============================================================
 	setupSPAHandler(mux)
 
-	// ============================================================
-	// RECIPE ENDPOINTS (Design API)
-	// ============================================================
+	// Recipe endpoints
 	mux.Handle("POST /recipes", withCORS(allowedOrigins, handleDesignCreateRecipe(recipeDatabase)))
 	mux.Handle("GET /recipes/{id}", withCORS(allowedOrigins, handleDesignGetRecipe(recipeDatabase)))
 	mux.Handle("GET /recipes", withCORS(allowedOrigins, handleDesignGetAllRecipes(recipeDatabase)))
 	mux.Handle("DELETE /recipes/{id}", withCORS(allowedOrigins, handleDesignDeleteRecipe(recipeDatabase)))
 	mux.Handle("OPTIONS /recipes", withCORS(allowedOrigins, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})))
 
-	// ============================================================
-	// AI RECIPE PARSING ENDPOINT
-	// ============================================================
+	// AI parsing endpoint
 	mux.Handle("POST /parse-recipe", withCORS(allowedOrigins, handleDesignParseRecipe()))
 	mux.Handle("OPTIONS /parse-recipe", withCORS(allowedOrigins, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})))
 
-	// ============================================================
-	// MEAL PLAN ENDPOINTS (Design API)
-	// ============================================================
+	// Meal plan endpoints
 	mux.Handle("GET /meal-plans", withCORS(allowedOrigins, handleDesignGetAllMealPlans(recipeDatabase)))
 	mux.Handle("POST /meal-plans", withCORS(allowedOrigins, handleDesignCreateMealPlan(recipeDatabase)))
 	mux.Handle("DELETE /meal-plans/{meal_plan_id}", withCORS(allowedOrigins, handleDesignDeleteMealPlan(recipeDatabase)))
 	mux.Handle("OPTIONS /meal-plans", withCORS(allowedOrigins, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})))
 	mux.Handle("OPTIONS /meal-plans/{meal_plan_id}", withCORS(allowedOrigins, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})))
 
-	// ============================================================
-	// GROCERY LIST ENDPOINTS (Design API)
-	// ============================================================
+	// Grocery list endpoints
 	mux.Handle("GET /grocery-list/{meal_plan_id}", withCORS(allowedOrigins, handleDesignGetGroceryList(recipeDatabase)))
 	mux.Handle("POST /grocery-lists", withCORS(allowedOrigins, handleDesignCreateGroceryList(recipeDatabase)))
 	mux.Handle("GET /grocery-lists", withCORS(allowedOrigins, handleDesignGetAllGroceryLists(recipeDatabase)))

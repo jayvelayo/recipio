@@ -7,7 +7,6 @@ import (
 	rec "github.com/jayvelayo/recipio/internal/recipes"
 )
 
-// handleDesignGetGroceryList retrieves grocery list for a meal plan (Design API)
 func handleDesignGetGroceryList(recipeDb rec.RecipeDatabase) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		mealPlanID := r.PathValue("meal_plan_id")
@@ -24,7 +23,6 @@ func handleDesignGetGroceryList(recipeDb rec.RecipeDatabase) http.Handler {
 	})
 }
 
-// handleDesignCreateGroceryList creates a new grocery list (Design API)
 func handleDesignCreateGroceryList(recipeDb rec.RecipeDatabase) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("Content-Type") != "application/json" {
@@ -49,7 +47,6 @@ func handleDesignCreateGroceryList(recipeDb rec.RecipeDatabase) http.Handler {
 	})
 }
 
-// handleDesignGetAllGroceryLists retrieves all grocery lists (Design API)
 func handleDesignGetAllGroceryLists(recipeDb rec.RecipeDatabase) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		lists, err := recipeDb.GetAllGroceryLists()
@@ -61,7 +58,6 @@ func handleDesignGetAllGroceryLists(recipeDb rec.RecipeDatabase) http.Handler {
 	})
 }
 
-// handleDesignGetGroceryListByID retrieves a specific grocery list (Design API)
 func handleDesignGetGroceryListByID(recipeDb rec.RecipeDatabase) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		id := r.PathValue("id")
@@ -78,7 +74,6 @@ func handleDesignGetGroceryListByID(recipeDb rec.RecipeDatabase) http.Handler {
 	})
 }
 
-// handleDesignUpdateGroceryList updates a grocery list (Design API)
 func handleDesignUpdateGroceryList(recipeDb rec.RecipeDatabase) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("Content-Type") != "application/json" {
@@ -104,7 +99,6 @@ func handleDesignUpdateGroceryList(recipeDb rec.RecipeDatabase) http.Handler {
 	})
 }
 
-// handleDesignDeleteGroceryList deletes a grocery list (Design API)
 func handleDesignDeleteGroceryList(recipeDb rec.RecipeDatabase) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		id := r.PathValue("id")

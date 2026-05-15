@@ -9,7 +9,6 @@ import (
 	rec "github.com/jayvelayo/recipio/internal/recipes"
 )
 
-// designRecipeToInternal converts API request to internal recipe model
 func designRecipeToInternal(body designRecipeRequest) rec.Recipe {
 	var recipe rec.Recipe
 	recipe.Name = body.Name
@@ -27,7 +26,6 @@ func designRecipeToInternal(body designRecipeRequest) rec.Recipe {
 	return recipe
 }
 
-// internalRecipeToDesign converts internal recipe model to API response
 func internalRecipeToDesign(recipe rec.Recipe) designRecipeResponse {
 	idStr := strconv.Itoa(recipe.ID)
 	ingStrings := make([]string, 0, len(recipe.Ingredients))
@@ -43,7 +41,6 @@ func internalRecipeToDesign(recipe rec.Recipe) designRecipeResponse {
 	}
 }
 
-// handleDesignCreateRecipe creates a new recipe (Design API)
 func handleDesignCreateRecipe(recipeDb rec.RecipeDatabase) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("Content-Type") != "application/json" {
@@ -89,7 +86,6 @@ func handleDesignDeleteRecipe(recipeDb rec.RecipeDatabase) http.Handler {
 	})
 }
 
-// handleDesignGetRecipe retrieves a single recipe (Design API)
 func handleDesignGetRecipe(recipeDb rec.RecipeDatabase) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		idStr := r.PathValue("id")
@@ -107,7 +103,6 @@ func handleDesignGetRecipe(recipeDb rec.RecipeDatabase) http.Handler {
 	})
 }
 
-// handleDesignGetAllRecipes retrieves all recipes (Design API)
 func handleDesignGetAllRecipes(recipeDb rec.RecipeDatabase) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		recipes, err := recipeDb.GetAllRecipes()

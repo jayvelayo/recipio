@@ -1,6 +1,5 @@
 import { API_BASE } from '../../apiConfig';
 
-/** GET /grocery-lists: returns array of grocery lists */
 export function getGroceryLists() {
   const url = `${API_BASE}/grocery-lists`;
   return fetch(url, { mode: 'cors' })
@@ -16,7 +15,6 @@ export function getGroceryLists() {
     });
 }
 
-/** GET /grocery-lists/{id}: returns grocery list */
 export function getGroceryListById(id) {
   const url = `${API_BASE}/grocery-lists/${id}`;
   return fetch(url, { mode: 'cors' })
@@ -32,7 +30,6 @@ export function getGroceryListById(id) {
     });
 }
 
-/** POST /grocery-lists: body { name, items: GroceryListItem[], meal_plan_id? }, returns { id, name } */
 export function createGroceryList(name, items, mealPlanId = null) {
   return fetch(`${API_BASE}/grocery-lists`, {
     method: 'POST',
@@ -45,7 +42,6 @@ export function createGroceryList(name, items, mealPlanId = null) {
   });
 }
 
-/** PUT /grocery-lists/{id}: body GroceryListItem[], updates items */
 export function updateGroceryList(id, items) {
   return fetch(`${API_BASE}/grocery-lists/${id}`, {
     method: 'PUT',
@@ -57,7 +53,6 @@ export function updateGroceryList(id, items) {
   });
 }
 
-/** DELETE /grocery-lists/{id}: deletes the grocery list */
 export function deleteGroceryList(id) {
   return fetch(`${API_BASE}/grocery-lists/${id}`, {
     method: 'DELETE',
