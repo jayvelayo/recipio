@@ -4,23 +4,15 @@ import { API_BASE } from '../../apiConfig';
 /** GET /meal-plans: returns array of { id, recipe_names } */
 export function getMealPlans() {
   const url = `${API_BASE}/meal-plans`;
-  // #region agent log
-  // #endregion
   return fetch(url, { mode: 'cors' })
     .then((res) => {
-      // #region agent log
-      // #endregion
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       return res.json();
     })
     .then((data) => {
-      // #region agent log
-      // #endregion
       return data;
     })
     .catch((e) => {
-      // #region agent log
-      // #endregion
       throw e;
     });
 }
