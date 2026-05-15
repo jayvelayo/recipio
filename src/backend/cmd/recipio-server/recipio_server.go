@@ -530,6 +530,35 @@ func handleDesignUpdateGroceryList(recipeDb rec.RecipeDatabase) http.Handler {
 	})
 }
 
+func handleDesignParseRecipe() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Content-Type") != "application/json" {
+			http.Error(w, "Content-Type must be application/json", http.StatusUnsupportedMediaType)
+			return
+		}
+		var body struct {
+			RawRecipeText string `json:"raw_recipe_text"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			http.Error(w, "Invalid JSON body", http.StatusBadRequest)
+			return
+		}
+		if body.RawRecipeText == "" {
+			http.Error(w, "Raw recipe text is required", http.StatusBadRequest)
+			return
+		}
+		// Process the raw recipe text (implementation details would go here)
+		// For demonstration, we'll just return a dummy response
+		response := designRecipeResponse{
+			ID:          "parsed-recipe-1",
+			Name:        "Parsed Recipe",
+			Ingredients: []string{"1 cup flour", "2 eggs", "1/2 cup sugar"},
+			Steps:       []string{"Mix ingredients", "Bake for 30 minutes"},
+		}
+		encodeJson(w, http.StatusOK, response)
+	})
+}
+
 func handleDesignDeleteGroceryList(recipeDb rec.RecipeDatabase) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		id := r.PathValue("id")
@@ -611,6 +640,8 @@ func SetUpRoutes(
 	mux.Handle("GET /recipes/{id}", withCORS(allowedOrigins, handleDesignGetRecipe(recipeDatabase)))
 	mux.Handle("GET /recipes", withCORS(allowedOrigins, handleDesignGetAllRecipes(recipeDatabase)))
 	mux.Handle("OPTIONS /recipes", withCORS(allowedOrigins, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})))
+	mux.Handle("POST /parse-recipe", withCORS(allowedOrigins, handleDesignParseRecipe()))
+	mux.Handle("OPTIONS /parse-recipe", withCORS(allowedOrigins, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})))
 	mux.Handle("GET /meal-plans", withCORS(allowedOrigins, handleDesignGetAllMealPlans(recipeDatabase)))
 	mux.Handle("POST /meal-plans", withCORS(allowedOrigins, handleDesignCreateMealPlan(recipeDatabase)))
 	mux.Handle("OPTIONS /meal-plans", withCORS(allowedOrigins, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})))

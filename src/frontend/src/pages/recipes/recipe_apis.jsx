@@ -36,6 +36,22 @@ export function createRecipe(newRecipe) {
   });
 }
 
+// Parse raw recipe text using AI
+export function parseRecipe(rawRecipeText) {
+  return fetch(`${API_BASE}/parse-recipe`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    mode: "cors",
+    body: JSON.stringify({ raw_recipe_text: rawRecipeText }),
+  }).then(res => {
+    if (res.status === 429) {
+      throw new Error('RATE_LIMIT');
+    }
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+  });
+}
+
 // DELETE not in design API; keep using v1 for now
 export function deleteRecipe(id) {
   return fetch(`${API_BASE}/v1/recipe/${id}`, {
