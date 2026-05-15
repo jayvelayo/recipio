@@ -27,6 +27,7 @@ func SetUpRoutes(
 	mux.Handle("POST /recipes", withCORS(allowedOrigins, handleDesignCreateRecipe(recipeDatabase)))
 	mux.Handle("GET /recipes/{id}", withCORS(allowedOrigins, handleDesignGetRecipe(recipeDatabase)))
 	mux.Handle("GET /recipes", withCORS(allowedOrigins, handleDesignGetAllRecipes(recipeDatabase)))
+	mux.Handle("DELETE /recipes/{id}", withCORS(allowedOrigins, handleDesignDeleteRecipe(recipeDatabase)))
 	mux.Handle("OPTIONS /recipes", withCORS(allowedOrigins, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})))
 
 	// ============================================================

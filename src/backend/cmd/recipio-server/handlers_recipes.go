@@ -72,6 +72,23 @@ func handleDesignCreateRecipe(recipeDb rec.RecipeDatabase) http.Handler {
 	})
 }
 
+func handleDesignDeleteRecipe(recipeDb rec.RecipeDatabase) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		idStr := r.PathValue("id")
+		id, err := strconv.Atoi(idStr)
+		if err != nil || id < 1 {
+			http.Error(w, "Invalid recipe id", http.StatusBadRequest)
+			return
+		}
+		err = recipeDb.DeleteRecipe(id)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusNotFound)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	})
+}
+
 // handleDesignGetRecipe retrieves a single recipe (Design API)
 func handleDesignGetRecipe(recipeDb rec.RecipeDatabase) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

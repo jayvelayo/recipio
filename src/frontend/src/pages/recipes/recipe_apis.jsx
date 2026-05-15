@@ -54,7 +54,7 @@ export function parseRecipe(rawRecipeText) {
 
 // DELETE not in design API; keep using v1 for now
 export function deleteRecipe(id) {
-  return fetch(`${API_BASE}/v1/recipe/${id}`, {
+  return fetch(`${API_BASE}/recipes/${id}`, {
     method: 'DELETE',
     mode: "cors"
   }).then(res => {
