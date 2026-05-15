@@ -37,9 +37,9 @@ type designGroceryListResponse struct {
 }
 
 type RecipeBody struct {
-	Name         string   `json:"name"`
-	Ingredients  []string `json:"ingredients"`
-	Instructions []string `json:"instructions"`
+	Name        string   `json:"name"`
+	Ingredients []string `json:"ingredients"`
+	Steps       []string `json:"steps"`
 }
 
 type CreateRecipeResponse struct {

@@ -29,7 +29,7 @@ export function ViewRecipe() {
 
   const recipe = data;
   const ingredients = recipe.ingredients ?? [];
-  const steps = recipe.steps ?? recipe.instructions ?? [];
+  const steps = recipe.steps ?? [];
 
   const listIngredients = ingredients.map((item, index) => (
     <li key={index} className="text-gray-700 py-2">

@@ -22,7 +22,7 @@ export function AddRecipeForm() {
   const blankRecipe = {
     name: "",
     ingredients: [],
-    instructions: [],
+    steps: [],
   }
   const [recipe, setRecipe] = useState(blankRecipe);
   const [useAI, setUseAI] = useState(false);
@@ -38,8 +38,8 @@ export function AddRecipeForm() {
     if (e.target.name == "ingredientsList") {
       setRecipe({...recipe, ingredients: e.target.value.split(/\r?\n/)});
     }
-    if (e.target.name == "instructions") {
-      setRecipe({...recipe, instructions: e.target.value.split(/\r?\n/)});
+    if (e.target.name == "steps") {
+      setRecipe({...recipe, steps: e.target.value.split(/\r?\n/)});
     }
   }
   
@@ -55,8 +55,14 @@ export function AddRecipeForm() {
     
     try {
       const parsedRecipe = await parseRecipe(rawRecipeText);
-      setRecipe(parsedRecipe);
-      setPreview(parsedRecipe);
+      // Normalize the recipe structure
+      const normalizedRecipe = {
+        name: parsedRecipe.name || "",
+        ingredients: Array.isArray(parsedRecipe.ingredients) ? parsedRecipe.ingredients : [],
+        steps: Array.isArray(parsedRecipe.steps) ? parsedRecipe.steps : [],
+      };
+      setRecipe(normalizedRecipe);
+      setPreview(normalizedRecipe);
     } catch (error) {
       if (error.message === 'RATE_LIMIT') {
         setPreviewError('Too many requests. Please wait a moment before trying again.');
@@ -175,18 +181,12 @@ export function AddRecipeForm() {
                 <div>
                   <p className="text-sm font-medium text-gray-700 mb-2">Instructions</p>
                   <ol className="space-y-1">
-                    {preview.instructions && preview.instructions.length > 0 ? (
-                      preview.instructions.map((inst, idx) => (
-                        <li key={idx} className="text-gray-900 text-sm">{idx + 1}. {inst}</li>
+                    {preview.steps && preview.steps.length > 0 ? (
+                      preview.steps.map((step, idx) => (
+                        <li key={idx} className="text-gray-900 text-sm">{idx + 1}. {step}</li>
                       ))
                     ) : (
-                      preview.steps && preview.steps.length > 0 ? (
-                        preview.steps.map((step, idx) => (
-                          <li key={idx} className="text-gray-900 text-sm">{idx + 1}. {step}</li>
-                        ))
-                      ) : (
-                        <p className="text-gray-500 text-sm">(No instructions)</p>
-                      )
+                      <p className="text-gray-500 text-sm">(No instructions)</p>
                     )}
                   </ol>
                 </div>
@@ -265,17 +265,17 @@ export function AddRecipeForm() {
 
             {/* Instructions */}
             <div>
-              <label htmlFor="instructions" className="block text-sm font-medium text-gray-900 mb-2">
+              <label htmlFor="steps" className="block text-sm font-medium text-gray-900 mb-2">
                 Instructions
               </label>
               <p className="text-xs text-gray-500 mb-2">One step per line</p>
               <textarea
-                id="instructions"
+                id="steps"
                 placeholder="Preheat oven to 350°F&#10;Mix ingredients together&#10;Bake for 12 minutes"
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition font-mono text-sm"
-                name="instructions"
+                name="steps"
                 onChange={handleFormChange}
-                value={recipe.instructions.join('\r\n')}
+                value={recipe.steps.join('\r\n')}
                 rows="6"
                 required
               />
