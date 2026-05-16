@@ -37,9 +37,19 @@ cd backend && go test ./...
 go test ./internal/sqlite_db/...   # DB layer
 go test ./cmd/recipio-server/...   # Handler integration tests
 
-# Frontend
+# Frontend — all tests
 cd frontend && npm test
+
+# Frontend — specific file
+cd frontend && npm test -- tests/Recipes.test.jsx
 ```
+
+Frontend tests use **Vitest** + **@testing-library/react** and cover:
+- `RecipeList` — loading/empty states, search filtering, delete confirmation
+- `ViewRecipe` — rendering ingredients/instructions/tags, edit mode toggle, save/cancel
+- `AddRecipeForm` — manual entry, AI parse preview, error states, form submission
+
+API calls are mocked via `vi.mock` so tests run without a backend.
 
 ### Database Snapshots
 
