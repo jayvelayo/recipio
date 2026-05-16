@@ -2,11 +2,14 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
+	"log"
 	"net/http"
+
+	rec "github.com/jayvelayo/recipio/internal/recipes"
 )
 
-// handleDesignParseRecipe parses raw recipe text using AI (Design API)
-func handleDesignParseRecipe() http.Handler {
+func handleDesignParseRecipe(parser rec.AIParser) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("Content-Type") != "application/json" {
 			http.Error(w, "Content-Type must be application/json", http.StatusUnsupportedMediaType)
@@ -24,14 +27,17 @@ func handleDesignParseRecipe() http.Handler {
 			return
 		}
 
-		// TODO: Implement actual AI parsing logic here
-		// For now, return a dummy response for demonstration
-		response := designRecipeResponse{
-			ID:          "parsed-recipe-1",
-			Name:        "Parsed Recipe",
-			Ingredients: []string{"1 cup flour", "2 eggs", "1/2 cup sugar"},
-			Steps:       []string{"Mix ingredients", "Bake for 30 minutes"},
+		recipe, err := parser.ParseRecipeText(sanitizeRecipeText(body.RawRecipeText))
+		if err != nil {
+			if errors.Is(err, rec.ErrLLMTimeout) {
+				http.Error(w, "LLM request timed out", http.StatusGatewayTimeout)
+				return
+			}
+			log.Printf("parse recipe error: %v", err)
+			http.Error(w, "Failed to parse recipe", http.StatusInternalServerError)
+			return
 		}
-		encodeJson(w, http.StatusOK, response)
+
+		encodeJson(w, http.StatusOK, internalRecipeToDesign(recipe))
 	})
 }

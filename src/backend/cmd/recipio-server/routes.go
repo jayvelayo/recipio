@@ -26,7 +26,7 @@ func SetUpRoutes(
 	mux.Handle("OPTIONS /recipes", withCORS(allowedOrigins, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})))
 
 	// AI parsing endpoint
-	mux.Handle("POST /parse-recipe", withCORS(allowedOrigins, handleDesignParseRecipe()))
+	mux.Handle("POST /parse-recipe", withCORS(allowedOrigins, handleDesignParseRecipe(rec.NewAIParser())))
 	mux.Handle("OPTIONS /parse-recipe", withCORS(allowedOrigins, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})))
 
 	// Meal plan endpoints

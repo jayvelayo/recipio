@@ -3,7 +3,36 @@ package main
 import (
 	"log"
 	"net/http"
+	"strings"
 )
+
+type statusRecorder struct {
+	http.ResponseWriter
+	status int
+	body   strings.Builder
+}
+
+func (r *statusRecorder) WriteHeader(status int) {
+	r.status = status
+	r.ResponseWriter.WriteHeader(status)
+}
+
+func (r *statusRecorder) Write(b []byte) (int, error) {
+	if r.status >= 400 {
+		r.body.Write(b)
+	}
+	return r.ResponseWriter.Write(b)
+}
+
+func withLogging(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		rec := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
+		next.ServeHTTP(rec, r)
+		if rec.status >= 400 {
+			log.Printf("ERROR %d %s %s: %s", rec.status, r.Method, r.URL.Path, strings.TrimSpace(rec.body.String()))
+		}
+	})
+}
 
 func withCORS(allowedOrigins []string, handler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

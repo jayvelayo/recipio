@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
+	"unicode"
 )
 
 func decodeJson[T any](r *http.Request) (T, error) {
@@ -22,6 +24,19 @@ func encodeJson[T any](w http.ResponseWriter, status int, v T) error {
 
 	json.NewEncoder(w).Encode(v)
 	return nil
+}
+
+func sanitizeRecipeText(s string) string {
+	return strings.Map(func(r rune) rune {
+		if unicode.IsLetter(r) || unicode.IsDigit(r) || unicode.IsSpace(r) {
+			return r
+		}
+		switch r {
+		case '.', ',', '-', '/', '(', ')', '°', '\'', '"', ':':
+			return r
+		}
+		return -1
+	}, s)
 }
 
 func returnError(w http.ResponseWriter, httpStatus int, status ResponseStatus, errorMessage string) {

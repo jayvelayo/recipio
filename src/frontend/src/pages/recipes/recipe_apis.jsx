@@ -40,9 +40,8 @@ export function parseRecipe(rawRecipeText) {
     mode: "cors",
     body: JSON.stringify({ raw_recipe_text: rawRecipeText }),
   }).then(res => {
-    if (res.status === 429) {
-      throw new Error('RATE_LIMIT');
-    }
+    if (res.status === 429) throw new Error('RATE_LIMIT');
+    if (res.status === 504) throw new Error('TIMEOUT');
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return res.json();
   });

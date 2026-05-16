@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { createRecipe, parseRecipe } from "./recipe_apis";
 import { useNavigate } from "react-router";
@@ -30,16 +30,31 @@ export function AddRecipeForm() {
   const [preview, setPreview] = useState(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState(null);
+  const [progress, setProgress] = useState(0);
+
+  useEffect(() => {
+    if (!previewLoading) {
+      setProgress(0);
+      return;
+    }
+    setProgress(0);
+    const interval = setInterval(() => {
+      setProgress(prev => prev >= 90 ? 90 : prev + 1);
+    }, 333);
+    return () => clearInterval(interval);
+  }, [previewLoading]);
   
+  const sanitize = (text) => text.replace(/[^a-zA-Z0-9\s.,\-/()°'":À-ɏ]/g, '');
+
   const handleFormChange = (e) => {
     if (e.target.name == "recipeName") {
-      setRecipe({...recipe, name: e.target.value})
+      setRecipe({...recipe, name: sanitize(e.target.value)})
     }
     if (e.target.name == "ingredientsList") {
-      setRecipe({...recipe, ingredients: e.target.value.split(/\r?\n/)});
+      setRecipe({...recipe, ingredients: sanitize(e.target.value).split(/\r?\n/)});
     }
     if (e.target.name == "steps") {
-      setRecipe({...recipe, steps: e.target.value.split(/\r?\n/)});
+      setRecipe({...recipe, steps: sanitize(e.target.value).split(/\r?\n/)});
     }
   }
   
@@ -64,7 +79,9 @@ export function AddRecipeForm() {
       setRecipe(normalizedRecipe);
       setPreview(normalizedRecipe);
     } catch (error) {
-      if (error.message === 'RATE_LIMIT') {
+      if (error.message === 'TIMEOUT') {
+        setPreviewError('Parsing timed out. Try reducing the amount of text and try again.');
+      } else if (error.message === 'RATE_LIMIT') {
         setPreviewError('Too many requests. Please wait a moment before trying again.');
       } else {
         setPreviewError('Failed to parse recipe. Please check your input and try again.');
@@ -143,9 +160,13 @@ export function AddRecipeForm() {
                 placeholder="Paste your recipe here... (e.g., '2 cups flour, 1 cup sugar, 2 eggs. Mix ingredients together. Bake at 350°F for 20 minutes.')"
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition font-mono text-sm"
                 value={rawRecipeText}
-                onChange={(e) => setRawRecipeText(e.target.value)}
+                onChange={(e) => setRawRecipeText(sanitize(e.target.value).slice(0, 2000))}
                 rows="12"
+                maxLength={2000}
               />
+              <p className={`text-xs mt-1 text-right ${rawRecipeText.length >= 2000 ? 'text-red-500' : 'text-gray-400'}`}>
+                {rawRecipeText.length} / 2000
+              </p>
             </div>
 
             {/* Preview Error */}
@@ -215,14 +236,24 @@ export function AddRecipeForm() {
 
             {/* Preview Button */}
             {!preview && (
-              <button
-                onClick={handlePreviewRecipe}
-                disabled={previewLoading || !rawRecipeText.trim()}
-                type="button"
-                className="w-full bg-blue-600 text-white font-medium py-2 rounded-lg hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed transition"
-              >
-                {previewLoading ? 'Parsing Recipe...' : 'Preview Recipe'}
-              </button>
+              <div className="space-y-2">
+                <button
+                  onClick={handlePreviewRecipe}
+                  disabled={previewLoading || !rawRecipeText.trim()}
+                  type="button"
+                  className="w-full bg-blue-600 text-white font-medium py-2 rounded-lg hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed transition"
+                >
+                  {previewLoading ? 'Parsing Recipe...' : 'Preview Recipe'}
+                </button>
+                {previewLoading && (
+                  <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                    <div
+                      className="bg-blue-500 h-2 rounded-full transition-all duration-300 ease-out"
+                      style={{ width: `${progress}%` }}
+                    />
+                  </div>
+                )}
+              </div>
             )}
           </div>
         ) : (

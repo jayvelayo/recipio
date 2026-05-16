@@ -11,10 +11,14 @@ import (
 
 func designRecipeToInternal(body designRecipeRequest) rec.Recipe {
 	var recipe rec.Recipe
-	recipe.Name = body.Name
-	recipe.Instructions = rec.InstructionList(body.Steps)
+	recipe.Name = sanitizeRecipeText(body.Name)
+	for _, line := range body.Steps {
+		if s := sanitizeRecipeText(line); s != "" {
+			recipe.Instructions = append(recipe.Instructions, s)
+		}
+	}
 	for _, line := range body.Ingredients {
-		words := strings.Fields(line)
+		words := strings.Fields(sanitizeRecipeText(line))
 		if len(words) == 0 {
 			continue
 		}

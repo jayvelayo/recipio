@@ -116,7 +116,7 @@ func main() {
 	defer recipeDb.CloseDb()
 
 	// Create server and start listening
-	srv := newServer(recipeDb, allowedOrigins)
+	srv := withLogging(newServer(recipeDb, allowedOrigins))
 
 	log.Println("Starting server on :4002...")
 	if err := http.ListenAndServe(":4002", srv); err != nil {
