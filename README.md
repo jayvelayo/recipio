@@ -15,17 +15,16 @@ Also see: [Relevant XKCD](https://xkcd.com/927/)
 
 2. **Setup symlinks:**
    ```bash
-   ./setup.sh
-   # Or manually: cd src/frontend && ln -sf ../.env .env
+   cd frontend && ln -sf ../.env .env
    ```
 
 3. **Start development servers:**
    ```bash
    # Terminal 1: Backend
-   ./bin/recipio-server
+   cd backend && go run cmd/recipio-server/main.go
 
    # Terminal 2: Frontend
-   cd src/frontend && npm run dev
+   cd frontend && npm run dev
    ```
 
 ### Production Deployment
@@ -49,7 +48,7 @@ VITE_API_BASE=http://192.168.1.170:4002
 
 **Setup:** Create a symlink for the frontend to access the `.env` file:
 ```bash
-cd src/frontend && ln -sf ../.env .env
+cd frontend && ln -sf ../.env .env
 ```
 
 **The backend automatically loads the `.env` file** - no need to export variables or rebuild!

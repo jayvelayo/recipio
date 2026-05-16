@@ -10,7 +10,7 @@ Recipio is a full-stack web app for storing recipes, creating meal plans, and ge
 
 ### Backend (Go)
 ```bash
-cd src/backend
+cd backend
 go run cmd/recipio-server/main.go   # Dev server (port 4002)
 go test ./...                        # All tests
 go test ./internal/sqlite_db/...    # DB layer tests only
@@ -19,7 +19,7 @@ go test ./cmd/recipio-server/...    # Handler integration tests only
 
 ### Frontend (React/Vite)
 ```bash
-cd src/frontend
+cd frontend
 npm install
 npm run dev      # Dev server (http://localhost:5173)
 npm run build
@@ -29,7 +29,7 @@ npm run lint
 
 ### Both at once
 ```bash
-cd src && ./run_server_client.sh
+./run_server_client.sh
 ```
 
 ### Production build
@@ -42,7 +42,7 @@ cd deploy/bin && ./recipio-server
 
 Frontend and backend share a single `.env` file at the repo root. Frontend accesses it via symlink:
 ```bash
-./setup.sh   # or: cd src/frontend && ln -sf ../.env .env
+cd frontend && ln -sf ../.env .env
 ```
 
 Key variables:
@@ -51,7 +51,7 @@ Key variables:
 
 ## Architecture
 
-### Backend (`src/backend/`)
+### Backend (`backend/`)
 
 All HTTP logic lives in `cmd/recipio-server/`:
 - `routes.go` — endpoint registration
@@ -61,7 +61,7 @@ All HTTP logic lives in `cmd/recipio-server/`:
 
 Handlers are higher-order functions returning `http.Handler`. Business logic is kept behind the `RecipeDatabase` interface defined in `internal/recipes/recipes_iface.go`, with SQLite implementation in `internal/sqlite_db/sqlite_db.go` and a mock in `internal/recipes/recipes_mock.go` for tests. The DB schema lives as a Go template in `internal/sqlite_db/schema.tmpl`.
 
-### Frontend (`src/frontend/src/`)
+### Frontend (`frontend/src/`)
 
 - `App.jsx` — top-level layout (sidebar, header, auth gate)
 - `routes.jsx` — React Router v7 route definitions

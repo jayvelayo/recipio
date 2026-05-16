@@ -13,15 +13,15 @@ mkdir -p ${BIN_PATH}
 
 # Build frontend
 echo "📦 Building frontend..."
-npm run --prefix src/frontend build
+npm run --prefix frontend build
 
 # Copy frontend build to bin directory
 echo "📋 Copying frontend assets..."
-cp -r src/frontend/dist ${BIN_PATH}/
+cp -r frontend/dist ${BIN_PATH}/
 
 # Build backend with embedded static files
 echo "🔨 Building backend..."
-go build -C src/backend/cmd/recipio-server/ -o ${REPO_ROOT}/${BIN_PATH}/recipio-server
+go build -C backend/cmd/recipio-server/ -o ${REPO_ROOT}/${BIN_PATH}/recipio-server
 
 echo "✅ Build complete!"
 echo ""
