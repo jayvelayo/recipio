@@ -7,7 +7,6 @@ import (
 	rec "github.com/jayvelayo/recipio/internal/recipes"
 )
 
-// handleDesignGetAllMealPlans retrieves all meal plans (Design API)
 func handleDesignGetAllMealPlans(recipeDb rec.RecipeDatabase) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		plans, err := recipeDb.GetAllMealPlans()
@@ -19,7 +18,6 @@ func handleDesignGetAllMealPlans(recipeDb rec.RecipeDatabase) http.Handler {
 	})
 }
 
-// handleDesignCreateMealPlan creates a new meal plan (Design API)
 func handleDesignCreateMealPlan(recipeDb rec.RecipeDatabase) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("Content-Type") != "application/json" {
@@ -43,7 +41,6 @@ func handleDesignCreateMealPlan(recipeDb rec.RecipeDatabase) http.Handler {
 	})
 }
 
-// handleDesignDeleteMealPlan deletes a meal plan (Design API)
 func handleDesignDeleteMealPlan(recipeDb rec.RecipeDatabase) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		mealPlanID := r.PathValue("meal_plan_id")
