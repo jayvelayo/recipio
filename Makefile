@@ -1,5 +1,4 @@
-REPO_ROOT := $(shell git rev-parse --show-toplevel)
-BIN_PATH  := deploy/bin
+BIN_PATH := bin
 
 .PHONY: all backend frontend test run clean
 
@@ -22,7 +21,7 @@ frontend:
 backend: frontend
 	@echo "Building backend..."
 	mkdir -p $(BIN_PATH)
-	go build -C backend/cmd/recipio-server/ -o $(REPO_ROOT)/$(BIN_PATH)/recipio-server
+	go build -C backend/cmd/recipio-server/ -o $(CURDIR)/$(BIN_PATH)/recipio-server
 
 test:
 	@echo "Running backend tests..."

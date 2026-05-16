@@ -4,7 +4,7 @@
 
 ### Single Binary (Recommended)
 ```bash
-make all   # builds frontend + backend into deploy/bin/
+make all   # builds frontend + backend into bin/
 make run   # starts the server at http://localhost:4002
 ```
 
@@ -38,7 +38,7 @@ docker-compose -f deploy/docker-compose.yml up -d
 ### Single-server (Railway, Render, Fly.io)
 1. Connect your GitHub repository
 2. Set build command: `make all`
-3. Set start command: `./deploy/bin/recipio-server`
+3. Set start command: `./bin/recipio-server`
 
 No CORS configuration needed — Go serves both the frontend and API from the same origin.
 

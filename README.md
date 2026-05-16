@@ -64,7 +64,7 @@ API calls are mocked via `vi.mock` so tests run without a backend.
 
 ### Production Deployment
 ```bash
-make all   # builds frontend + backend into deploy/bin/
+make all   # builds frontend + backend into bin/
 make run   # starts the server at http://localhost:4002
 ```
 

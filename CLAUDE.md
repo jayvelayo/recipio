@@ -32,7 +32,7 @@ npm run lint
 
 ### Production build
 ```bash
-make all   # Builds frontend + backend into deploy/bin/
+make all   # Builds frontend + backend into bin/
 make run   # Starts the server at http://localhost:4002
 ```
 
