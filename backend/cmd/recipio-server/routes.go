@@ -22,8 +22,10 @@ func SetUpRoutes(
 	mux.Handle("POST /recipes", withCORS(allowedOrigins, handleDesignCreateRecipe(recipeDatabase)))
 	mux.Handle("GET /recipes/{id}", withCORS(allowedOrigins, handleDesignGetRecipe(recipeDatabase)))
 	mux.Handle("GET /recipes", withCORS(allowedOrigins, handleDesignGetAllRecipes(recipeDatabase)))
+	mux.Handle("PUT /recipes/{id}", withCORS(allowedOrigins, handleDesignUpdateRecipe(recipeDatabase)))
 	mux.Handle("DELETE /recipes/{id}", withCORS(allowedOrigins, handleDesignDeleteRecipe(recipeDatabase)))
 	mux.Handle("OPTIONS /recipes", withCORS(allowedOrigins, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})))
+	mux.Handle("OPTIONS /recipes/{id}", withCORS(allowedOrigins, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})))
 
 	// AI parsing endpoint
 	mux.Handle("POST /parse-recipe", withCORS(allowedOrigins, handleDesignParseRecipe(rec.NewAIParser())))

@@ -77,6 +77,15 @@ func (db *MockRecipeDatabase) DeleteGroceryList(id string) error {
 	return nil
 }
 
+func (db *MockRecipeDatabase) UpdateRecipe(id int, recipe Recipe) error {
+	if id < 1 || id > db.recipeCount {
+		return fmt.Errorf("recipe not found")
+	}
+	recipe.ID = id
+	db.recipes[id-1] = recipe
+	return nil
+}
+
 func (db *MockRecipeDatabase) DeleteRecipe(id int) error {
 	if id < 1 || id > db.recipeCount {
 		return fmt.Errorf("recipe not found")

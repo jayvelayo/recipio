@@ -47,6 +47,22 @@ export function parseRecipe(rawRecipeText) {
   });
 }
 
+export function updateRecipe({ id, recipe }) {
+  const body = {
+    name: recipe.name,
+    ingredients: Array.isArray(recipe.ingredients) ? recipe.ingredients : [],
+    instructions: Array.isArray(recipe.instructions) ? recipe.instructions : [],
+  };
+  return fetch(`${API_BASE}/recipes/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    mode: "cors",
+    body: JSON.stringify(body),
+  }).then(res => {
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  });
+}
+
 export function deleteRecipe(id) {
   return fetch(`${API_BASE}/recipes/${id}`, {
     method: 'DELETE',

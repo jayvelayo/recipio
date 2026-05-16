@@ -82,6 +82,65 @@ func TestCreateRecipeHandler(t *testing.T) {
 	})
 }
 
+func TestUpdateRecipeHandler(t *testing.T) {
+	mockdb := rec.MockRecipeDatabase{}
+	mockdb.CreateRecipe(rec.Recipe{
+		Name:         "Original Recipe",
+		Ingredients:  []rec.Ingredient{{Name: "Flour", Quantity: "2 cups"}},
+		Instructions: rec.InstructionList{"Mix", "Bake"},
+	})
+	handler := createFakeServer(&mockdb)
+
+	t.Run("Updates an existing recipe", func(t *testing.T) {
+		body := map[string]interface{}{
+			"name":         "Updated Recipe",
+			"ingredients":  []map[string]string{{"name": "Sugar", "quantity": "1 cup"}},
+			"instructions": []string{"Mix well", "Bake longer"},
+		}
+		req, _ := createRequestWithBody("PUT", "/recipes/1", body)
+		response := httptest.NewRecorder()
+		handler.ServeHTTP(response, req)
+		if response.Code != http.StatusNoContent {
+			t.Errorf("Expected status code %d, got %d: %s", http.StatusNoContent, response.Code, getResponseBody(response))
+		}
+	})
+
+	t.Run("Returns 404 for non-existent recipe", func(t *testing.T) {
+		body := map[string]interface{}{
+			"name":         "Updated Recipe",
+			"ingredients":  []map[string]string{{"name": "Sugar", "quantity": "1 cup"}},
+			"instructions": []string{"Mix well"},
+		}
+		req, _ := createRequestWithBody("PUT", "/recipes/999", body)
+		response := httptest.NewRecorder()
+		handler.ServeHTTP(response, req)
+		if response.Code != http.StatusNotFound {
+			t.Errorf("Expected status code %d, got %d", http.StatusNotFound, response.Code)
+		}
+	})
+
+	t.Run("Returns 415 without JSON content-type", func(t *testing.T) {
+		req, _ := http.NewRequest("PUT", "/recipes/1", nil)
+		response := httptest.NewRecorder()
+		handler.ServeHTTP(response, req)
+		if response.Code != http.StatusUnsupportedMediaType {
+			t.Errorf("Expected status code %d, got %d", http.StatusUnsupportedMediaType, response.Code)
+		}
+	})
+
+	t.Run("Returns 400 when required fields are missing", func(t *testing.T) {
+		body := map[string]interface{}{
+			"name": "No Ingredients Recipe",
+		}
+		req, _ := createRequestWithBody("PUT", "/recipes/1", body)
+		response := httptest.NewRecorder()
+		handler.ServeHTTP(response, req)
+		if response.Code != http.StatusBadRequest {
+			t.Errorf("Expected status code %d, got %d", http.StatusBadRequest, response.Code)
+		}
+	})
+}
+
 func TestGetRecipeHandler(t *testing.T) {
 	mockdb := rec.MockRecipeDatabase{}
 	// Add some mock recipes

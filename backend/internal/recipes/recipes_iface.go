@@ -4,6 +4,7 @@ type RecipeDatabase interface {
 	CreateRecipe(recipe Recipe) (uint64, error)
 	GetRecipe(id int) (Recipe, error)
 	GetAllRecipes() (Recipes, error)
+	UpdateRecipe(id int, recipe Recipe) error
 	DeleteRecipe(id int) error
 	AddRecipeToMealPlan(id int) error
 	CreateMealPlan(recipeIDs []string) (mealPlanID string, err error)

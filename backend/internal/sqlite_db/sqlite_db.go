@@ -147,6 +147,54 @@ func (ctx *SqliteDatabaseContext) GetRecipe(id int) (rec.Recipe, error) {
 	return recipe, nil
 }
 
+func (ctx *SqliteDatabaseContext) UpdateRecipe(id int, recipe rec.Recipe) error {
+	db := ctx.sqliteDb
+	tx, err := db.Begin()
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	instructions := encodeInstructionList(recipe.Instructions)
+	updateQuery := fmt.Sprintf("UPDATE %s SET name = ?, instruction = ? WHERE id = ?", RecipeTableName)
+	res, err := tx.Exec(updateQuery, recipe.Name, instructions, id)
+	if err != nil {
+		return fmt.Errorf("failed to update recipe: %w", err)
+	}
+	rowsAffected, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get affected rows: %w", err)
+	}
+	if rowsAffected == 0 {
+		return fmt.Errorf("recipe with id %d not found", id)
+	}
+
+	delIngs := fmt.Sprintf("DELETE FROM %s WHERE recipe_id = ?", IngredientsTableName)
+	if _, err := tx.Exec(delIngs, id); err != nil {
+		return fmt.Errorf("failed to delete ingredients: %w", err)
+	}
+
+	stmt, err := tx.Prepare(fmt.Sprintf("INSERT INTO %s (recipe_id, name, quantity) VALUES (?, ?, ?)", IngredientsTableName))
+	if err != nil {
+		return fmt.Errorf("failed to prepare ingredient insert: %w", err)
+	}
+	defer stmt.Close()
+
+	for _, ing := range recipe.Ingredients {
+		if ing.Name == "" {
+			return fmt.Errorf("ingredient name cannot be empty")
+		}
+		if _, err := stmt.Exec(id, ing.Name, ing.Quantity); err != nil {
+			return fmt.Errorf("failed to insert ingredient: %w", err)
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
+	}
+	return nil
+}
+
 func (ctx *SqliteDatabaseContext) DeleteRecipe(id int) error {
 	db := ctx.sqliteDb
 
