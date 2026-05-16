@@ -2,8 +2,20 @@ import React from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router';
 import { getGroceryLists, deleteGroceryList } from './grocery_apis';
-import LoadingPage from '/src/pages/common/LoadingPage';
+import { SkeletonList } from '/src/pages/common/LoadingPage';
 import { FiEye, FiTrash2, FiPlus, FiCheck } from 'react-icons/fi';
+import { motion } from 'framer-motion';
+import { toast } from 'sonner';
+
+const containerVariants = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.06 } },
+};
+
+const rowVariants = {
+  hidden: { opacity: 0, y: 10 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.22 } },
+};
 
 function GroceryListRow({ list }) {
   const queryClient = useQueryClient();
@@ -12,6 +24,10 @@ function GroceryListRow({ list }) {
     mutationFn: () => deleteGroceryList(list.id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['grocery-lists'] });
+      toast.success('Grocery list deleted');
+    },
+    onError: () => {
+      toast.error('Failed to delete grocery list');
     },
   });
 
@@ -33,7 +49,7 @@ function GroceryListRow({ list }) {
               <p className="text-xs text-gray-500">From Meal Plan #{list.mealPlanID}</p>
             )}
           </div>
-          
+
           {/* Progress bar */}
           <div className="mt-3 w-full bg-gray-200 rounded-full h-2 overflow-hidden">
             <div
@@ -76,7 +92,7 @@ export function GroceryListList() {
     queryFn: getGroceryLists,
   });
 
-  if (isLoading) return <LoadingPage />;
+  if (isLoading) return <SkeletonList />;
   if (error) return <p className="text-red-600">Error: {error.message}</p>;
 
   return (
@@ -90,9 +106,18 @@ export function GroceryListList() {
       </div>
 
       {data?.length ? (
-        <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
-          {data.map((list) => <GroceryListRow list={list} key={list.id} />)}
-        </div>
+        <motion.div
+          className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden"
+          variants={containerVariants}
+          initial="hidden"
+          animate="show"
+        >
+          {data.map((list) => (
+            <motion.div key={list.id} variants={rowVariants}>
+              <GroceryListRow list={list} />
+            </motion.div>
+          ))}
+        </motion.div>
       ) : (
         <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
           <p className="text-gray-500 mb-4">No grocery lists yet. Create your first list!</p>

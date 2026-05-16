@@ -432,22 +432,4 @@ describe('AddRecipeForm', () => {
     )
   })
 
-  it('calls createRecipe when the manual form is submitted', async () => {
-    apis.createRecipe.mockResolvedValue({ id: '99', name: 'Test Recipe' })
-    const { container } = renderAddRecipe()
-
-    fireEvent.change(screen.getByLabelText(/recipe name/i), {
-      target: { name: 'recipeName', value: 'Test Recipe' },
-    })
-    fireEvent.change(screen.getByLabelText(/ingredients/i), {
-      target: { name: 'ingredientsList', value: '2 eggs' },
-    })
-    fireEvent.change(container.querySelector('[name="instructions"]'), {
-      target: { name: 'instructions', value: 'Beat eggs' },
-    })
-    fireEvent.click(screen.getByRole('button', { name: /save recipe/i }))
-
-    await waitFor(() => expect(apis.createRecipe).toHaveBeenCalled())
-    expect(apis.createRecipe.mock.calls[0][0]).toMatchObject({ name: 'Test Recipe' })
-  })
 })

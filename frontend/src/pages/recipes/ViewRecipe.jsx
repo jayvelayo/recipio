@@ -6,6 +6,8 @@ import { Link } from "react-router";
 import LoadingPage from '/src/pages/common/LoadingPage'
 import { FiArrowLeft, FiEdit2, FiCheck, FiX } from 'react-icons/fi';
 import { parseIngredient } from '../../utils/parseIngredient';
+import { motion } from 'framer-motion';
+import { toast } from 'sonner';
 
 function getTagColor(tag) {
   const tagColorMap = {
@@ -43,9 +45,10 @@ export function ViewRecipe() {
       queryClient.invalidateQueries(['recipes', id]);
       queryClient.invalidateQueries(['recipes']);
       setIsEditing(false);
+      toast.success('Recipe saved');
     },
     onError: () => {
-      alert('Failed to update recipe');
+      toast.error('Failed to save recipe');
     },
   });
 
@@ -214,24 +217,34 @@ export function ViewRecipe() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Ingredients */}
-        <div className="lg:col-span-1">
+        <motion.div
+          className="lg:col-span-1"
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.25, delay: 0.05 }}
+        >
           <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
             <h3 className="text-xl font-bold text-gray-900 mb-4">Ingredients</h3>
             <ul className="space-y-0">
               {listIngredients}
             </ul>
           </div>
-        </div>
+        </motion.div>
 
         {/* Instructions */}
-        <div className="lg:col-span-2">
+        <motion.div
+          className="lg:col-span-2"
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.25, delay: 0.12 }}
+        >
           <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
             <h3 className="text-xl font-bold text-gray-900 mb-4">Instructions</h3>
             <ol className="space-y-0">
               {listSteps}
             </ol>
           </div>
-        </div>
+        </motion.div>
       </div>
 
       {/* Back Button */}

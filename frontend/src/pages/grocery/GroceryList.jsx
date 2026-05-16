@@ -4,6 +4,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getGroceryListById, updateGroceryList } from './grocery_apis';
 import LoadingPage from '/src/pages/common/LoadingPage';
 import { FiArrowLeft, FiTrash2, FiCheck, FiPlus } from 'react-icons/fi';
+import { motion, AnimatePresence } from 'framer-motion';
+import { toast } from 'sonner';
 
 export function GroceryList() {
   const { id } = useParams();
@@ -35,14 +37,17 @@ export function GroceryList() {
     e.preventDefault();
     if (!newItemName.trim()) return;
 
+    const name = newItemName.trim();
     const newItem = {
-      name: newItemName.trim(),
+      name,
       quantity: newItemQuantity.trim(),
       checked: false,
     };
 
     const newItems = [...(groceryList?.items || []), newItem];
-    updateMutation.mutate(newItems);
+    updateMutation.mutate(newItems, {
+      onSuccess: () => toast.success(`"${name}" added`),
+    });
 
     setNewItemName('');
     setNewItemQuantity('');
@@ -147,42 +152,49 @@ export function GroceryList() {
       {/* Items List */}
       {filteredItems?.length ? (
         <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
-          {filteredItems.map((item, index) => {
-            const originalIndex = groceryList.items.indexOf(item);
-            return (
-              <div
-                key={originalIndex}
-                className="flex items-center gap-4 p-4 border-b border-gray-200 last:border-b-0 hover:bg-gray-50 transition"
-              >
-                <input
-                  type="checkbox"
-                  checked={item.checked}
-                  onChange={() => handleCheck(originalIndex)}
-                  disabled={updateMutation.isPending}
-                  className="w-5 h-5 text-indigo-600 rounded cursor-pointer"
-                />
-                <div className="flex-1 min-w-0">
-                  <label
-                    className={`text-sm font-medium cursor-pointer block ${
-                      item.checked
-                        ? 'line-through text-gray-400'
-                        : 'text-gray-900'
-                    }`}
-                  >
-                    {item.quantity ? `${item.quantity} ${item.name}` : item.name}
-                  </label>
-                </div>
-                <button
-                  className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
-                  onClick={() => handleDeleteItem(originalIndex)}
-                  disabled={updateMutation.isPending}
-                  title="Delete item"
+          <AnimatePresence initial={false}>
+            {filteredItems.map((item) => {
+              const originalIndex = groceryList.items.indexOf(item);
+              return (
+                <motion.div
+                  key={originalIndex}
+                  layout
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0, overflow: 'hidden' }}
+                  transition={{ duration: 0.18 }}
+                  className="flex items-center gap-4 p-4 border-b border-gray-200 last:border-b-0 hover:bg-gray-50 transition-colors"
                 >
-                  <FiTrash2 size={18} />
-                </button>
-              </div>
-            );
-          })}
+                  <input
+                    type="checkbox"
+                    checked={item.checked}
+                    onChange={() => handleCheck(originalIndex)}
+                    disabled={updateMutation.isPending}
+                    className="w-5 h-5 text-indigo-600 rounded cursor-pointer"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <label
+                      className={`text-sm font-medium cursor-pointer block transition-all duration-200 ${
+                        item.checked
+                          ? 'line-through text-gray-400'
+                          : 'text-gray-900'
+                      }`}
+                    >
+                      {item.quantity ? `${item.quantity} ${item.name}` : item.name}
+                    </label>
+                  </div>
+                  <button
+                    className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                    onClick={() => handleDeleteItem(originalIndex)}
+                    disabled={updateMutation.isPending}
+                    title="Delete item"
+                  >
+                    <FiTrash2 size={18} />
+                  </button>
+                </motion.div>
+              );
+            })}
+          </AnimatePresence>
         </div>
       ) : (
         <div className="text-center py-8 bg-white rounded-lg border border-gray-200">

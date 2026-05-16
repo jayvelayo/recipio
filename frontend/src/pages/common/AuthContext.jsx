@@ -1,20 +1,16 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState } from 'react';
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [user, setUser] = useState(null);
-
-  // Example: Check for authentication on mount (e.g., from localStorage)
-  useEffect(() => {
-    const storedAuth = localStorage.getItem('isAuthenticated');
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
     const storedUser = localStorage.getItem('user');
-    if (storedAuth === 'true' && storedUser) {
-      setIsAuthenticated(true);
-      setUser(JSON.parse(storedUser));
-    }
-  }, []);
+    return localStorage.getItem('isAuthenticated') === 'true' && !!storedUser;
+  });
+  const [user, setUser] = useState(() => {
+    const storedUser = localStorage.getItem('user');
+    return storedUser ? JSON.parse(storedUser) : null;
+  });
 
   const login = (userData) => {
     setIsAuthenticated(true);

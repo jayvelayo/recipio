@@ -4,6 +4,7 @@ import { createRecipe, parseRecipe } from "./recipe_apis";
 import { useNavigate } from "react-router";
 import { FiArrowLeft } from 'react-icons/fi';
 import { parseIngredient } from '../../utils/parseIngredient';
+import { toast } from 'sonner';
 
 export function AddRecipeForm() {
   const navigate = useNavigate();
@@ -11,12 +12,13 @@ export function AddRecipeForm() {
 
   const mutation = useMutation({
     mutationFn: createRecipe,
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries(['recipes']);
+      toast.success(`"${variables.name}" added`);
       navigate("/recipe");
     },
     onError: () => {
-      alert("Failed to insert recipe")
+      toast.error('Failed to save recipe');
     }
   });
 

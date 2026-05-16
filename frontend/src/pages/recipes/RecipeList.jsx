@@ -1,9 +1,21 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { deleteRecipe, getRecipes } from "./recipe_apis";
 import { Form } from "react-router";
-import LoadingPage from '/src/pages/common/LoadingPage'
+import { SkeletonList } from '/src/pages/common/LoadingPage';
 import { useEffect, useState } from 'react';
 import { FiTrash2, FiSearch, FiPlus } from 'react-icons/fi';
+import { motion } from 'framer-motion';
+import { toast } from 'sonner';
+
+const containerVariants = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.05 } },
+};
+
+const rowVariants = {
+  hidden: { opacity: 0, y: 8 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.2 } },
+};
 
 function displayTagsToString(tags) {
   if (typeof tags === 'undefined') {
@@ -21,9 +33,10 @@ function RecipeDeleteIcon({ id }) {
     onSuccess: () => {
       queryClient.invalidateQueries(['recipes']);
       setIsDeleting(false);
+      toast.success('Recipe deleted');
     },
-    onError: (error) => { 
-      alert(`Failed to delete: ${error}`);
+    onError: (error) => {
+      toast.error(`Failed to delete: ${error.message}`);
       setIsDeleting(false);
     }
   });
@@ -34,7 +47,7 @@ function RecipeDeleteIcon({ id }) {
       mutation.mutate(id);
     }
   }
-  
+
   return (
     <button
       onClick={handleClick}
@@ -50,8 +63,8 @@ function RecipeDeleteIcon({ id }) {
 function RecipeRowPreview({recipe}) {
   return (
     <div className="flex items-center justify-between p-4 border-b border-gray-200 hover:bg-gray-50 transition">
-      <a 
-        href={`/recipe/view/${recipe.id}`} 
+      <a
+        href={`/recipe/view/${recipe.id}`}
         className="flex-1 cursor-pointer"
       >
         <h3 className="font-semibold text-gray-900 hover:text-indigo-600">{recipe.name}</h3>
@@ -81,16 +94,18 @@ function RecipeListRows({recipes}) {
     )
   }
 
+  const sorted = recipeItems?.sort((a, b) => a.name.localeCompare(b.name));
+
   return (
     <>
       {/* Search Bar */}
       <div className="mb-6">
         <div className="relative">
           <FiSearch className="absolute left-3 top-3 text-gray-400" size={20} />
-          <input 
-            type="text" 
-            placeholder="Search recipes..." 
-            value={searchQuery} 
+          <input
+            type="text"
+            placeholder="Search recipes..."
+            value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition"
           />
@@ -98,13 +113,18 @@ function RecipeListRows({recipes}) {
       </div>
 
       {/* Recipe List */}
-      <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
-        { recipeItems?.sort(
-            (a, b) => a.name.localeCompare(b.name))
-          .map( (recipe) => (
-            <RecipeRowPreview recipe={recipe} key={recipe.id}/>
+      <motion.div
+        className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden"
+        variants={containerVariants}
+        initial="hidden"
+        animate="show"
+      >
+        {sorted?.map(recipe => (
+          <motion.div key={recipe.id} variants={rowVariants}>
+            <RecipeRowPreview recipe={recipe} />
+          </motion.div>
         ))}
-      </div>
+      </motion.div>
     </>
   )
 }
@@ -115,16 +135,16 @@ export function RecipeList() {
       queryFn: getRecipes,
   });
 
-  if (isLoading) return <LoadingPage />
+  if (isLoading) return <SkeletonList />
   if (error) return <p className="text-red-600">Error: {error.message}</p>
-  
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold text-gray-900">Recipes</h1>
         <Form action="/recipe/add/" className="inline">
-          <button 
-            className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 transition" 
+          <button
+            className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 transition"
             type="submit"
           >
             <FiPlus size={20} />

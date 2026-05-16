@@ -1,11 +1,13 @@
 import './App.css'
-import { RouterProvider, NavLink, Outlet } from 'react-router'
+import { RouterProvider, NavLink, Outlet, useLocation } from 'react-router'
 import { router, sidebarLinks} from './routes.jsx'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useState } from 'react';
 import Login from '/src/pages/common/Login';
 import { AuthProvider, useAuth } from '/src/pages/common/AuthContext';
 import { FiLogOut, FiMenu, FiX } from 'react-icons/fi';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Toaster } from 'sonner';
 
 const queryClient = new QueryClient();
 
@@ -14,6 +16,7 @@ function App() {
     <AuthProvider>
       <QueryClientProvider client={queryClient}>
         <RouterProvider router={router} />
+        <Toaster richColors position="bottom-right" />
       </QueryClientProvider>
     </AuthProvider>
     )
@@ -22,21 +25,33 @@ function App() {
 export function Layout() {
   const { isAuthenticated } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const location = useLocation();
 
   if (!isAuthenticated) {
     return <Login/>
   }
-  
+
   return (
     <div className="flex flex-col h-screen bg-gray-50">
       <HeaderBar onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
-      
+
       <div className="flex flex-1 overflow-hidden">
         <SidebarNavigation isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-        <div className="flex-1 overflow-auto">
-          <div className="maincontent">
-            <Outlet />
-          </div>
+        <div className="flex-1 relative overflow-hidden">
+          <AnimatePresence mode="sync">
+            <motion.div
+              key={location.pathname}
+              className="absolute inset-0 overflow-auto"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.18 }}
+            >
+              <div className="maincontent">
+                <Outlet />
+              </div>
+            </motion.div>
+          </AnimatePresence>
         </div>
       </div>
     </div>
