@@ -4,6 +4,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 
 	rec "github.com/jayvelayo/recipio/internal/recipes"
@@ -109,7 +110,16 @@ func main() {
 	log.Printf("Allowed CORS origins: %v", allowedOrigins)
 
 	// Initialize database
-	recipeDb, err := sqlite_db.InitDb("recipes.db")
+	cacheDir, err := os.UserCacheDir()
+	if err != nil {
+		log.Fatalf("unable to get user cache dir: %v", err)
+	}
+	dbPath := filepath.Join(cacheDir, "recipio", "recipes.db")
+	if err := os.MkdirAll(filepath.Dir(dbPath), 0755); err != nil {
+		log.Fatalf("unable to create cache dir: %v", err)
+	}
+	log.Printf("Using database: %s", dbPath)
+	recipeDb, err := sqlite_db.InitDb(dbPath)
 	if err != nil {
 		log.Fatalf("unable to init db: %v", err)
 	}

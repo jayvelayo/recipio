@@ -39,13 +39,3 @@ func sanitizeRecipeText(s string) string {
 	}, s)
 }
 
-func returnError(w http.ResponseWriter, httpStatus int, status ResponseStatus, errorMessage string) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(httpStatus)
-	errReponse := CreateRecipeResponse{
-		Status:       status,
-		ErrorMessage: errorMessage,
-		RecipeId:     0,
-	}
-	json.NewEncoder(w).Encode(errReponse)
-}

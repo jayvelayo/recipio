@@ -27,6 +27,29 @@ Also see: [Relevant XKCD](https://xkcd.com/927/)
    cd frontend && npm run dev
    ```
 
+### Testing
+
+```bash
+# Backend — all tests
+cd backend && go test ./...
+
+# Backend — by layer
+go test ./internal/sqlite_db/...   # DB layer
+go test ./cmd/recipio-server/...   # Handler integration tests
+
+# Frontend
+cd frontend && npm test
+```
+
+### Database Snapshots
+
+```bash
+# Save a timestamped copy of the database to snapshots/
+# Linux: ~/.cache/recipio/recipes.db
+# macOS: ~/Library/Caches/recipio/recipes.db
+./tools/snapshot-db.sh
+```
+
 ### Production Deployment
 ```bash
 # Build and run

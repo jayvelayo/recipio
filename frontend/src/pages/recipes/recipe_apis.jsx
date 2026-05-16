@@ -20,7 +20,7 @@ export function createRecipe(newRecipe) {
   const body = {
     name: newRecipe.name,
     ingredients: Array.isArray(newRecipe.ingredients) ? newRecipe.ingredients : [],
-    steps: Array.isArray(newRecipe.steps) ? newRecipe.steps : [],
+    instructions: Array.isArray(newRecipe.instructions) ? newRecipe.instructions : [],
   };
   return fetch(`${API_BASE}/recipes`, {
     method: 'POST',

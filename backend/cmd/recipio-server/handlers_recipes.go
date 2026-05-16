@@ -4,46 +4,9 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
-	"strings"
 
 	rec "github.com/jayvelayo/recipio/internal/recipes"
 )
-
-func designRecipeToInternal(body designRecipeRequest) rec.Recipe {
-	var recipe rec.Recipe
-	recipe.Name = sanitizeRecipeText(body.Name)
-	for _, line := range body.Steps {
-		if s := sanitizeRecipeText(line); s != "" {
-			recipe.Instructions = append(recipe.Instructions, s)
-		}
-	}
-	for _, line := range body.Ingredients {
-		words := strings.Fields(sanitizeRecipeText(line))
-		if len(words) == 0 {
-			continue
-		}
-		recipe.Ingredients = append(recipe.Ingredients, rec.Ingredient{
-			Name:     words[len(words)-1],
-			Quantity: strings.Join(words[0:len(words)-1], " "),
-		})
-	}
-	return recipe
-}
-
-func internalRecipeToDesign(recipe rec.Recipe) designRecipeResponse {
-	idStr := strconv.Itoa(recipe.ID)
-	ingStrings := make([]string, 0, len(recipe.Ingredients))
-	for _, ing := range recipe.Ingredients {
-		s := strings.TrimSpace(ing.Quantity) + " " + strings.TrimSpace(ing.Name)
-		ingStrings = append(ingStrings, strings.TrimSpace(s))
-	}
-	return designRecipeResponse{
-		ID:          idStr,
-		Name:        recipe.Name,
-		Ingredients: ingStrings,
-		Steps:       recipe.Instructions,
-	}
-}
 
 func handleDesignCreateRecipe(recipeDb rec.RecipeDatabase) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -51,14 +14,28 @@ func handleDesignCreateRecipe(recipeDb rec.RecipeDatabase) http.Handler {
 			http.Error(w, "Content-Type must be application/json", http.StatusUnsupportedMediaType)
 			return
 		}
-		var body designRecipeRequest
-		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		var recipe rec.Recipe
+		if err := json.NewDecoder(r.Body).Decode(&recipe); err != nil {
 			http.Error(w, "Invalid JSON body", http.StatusBadRequest)
 			return
 		}
-		recipe := designRecipeToInternal(body)
+		recipe.Name = sanitizeRecipeText(recipe.Name)
+		var ings []rec.Ingredient
+		for _, ing := range recipe.Ingredients {
+			if name := sanitizeRecipeText(ing.Name); name != "" {
+				ings = append(ings, rec.Ingredient{Name: name, Quantity: sanitizeRecipeText(ing.Quantity)})
+			}
+		}
+		recipe.Ingredients = ings
+		var instructions rec.InstructionList
+		for _, s := range recipe.Instructions {
+			if s := sanitizeRecipeText(s); s != "" {
+				instructions = append(instructions, s)
+			}
+		}
+		recipe.Instructions = instructions
 		if recipe.Name == "" || len(recipe.Ingredients) == 0 || len(recipe.Instructions) == 0 {
-			http.Error(w, "Missing required fields: name, ingredients, steps", http.StatusBadRequest)
+			http.Error(w, "Missing required fields: name, ingredients, instructions", http.StatusBadRequest)
 			return
 		}
 		recipeID, err := recipeDb.CreateRecipe(recipe)
@@ -66,7 +43,7 @@ func handleDesignCreateRecipe(recipeDb rec.RecipeDatabase) http.Handler {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-		encodeJson(w, http.StatusCreated, designCreateRecipeResponse{
+		encodeJson(w, http.StatusCreated, CreateRecipeResponse{
 			ID:      strconv.FormatUint(recipeID, 10),
 			Message: "Recipe created successfully",
 		})
@@ -103,7 +80,7 @@ func handleDesignGetRecipe(recipeDb rec.RecipeDatabase) http.Handler {
 			http.Error(w, err.Error(), http.StatusNotFound)
 			return
 		}
-		encodeJson(w, http.StatusOK, internalRecipeToDesign(recipe))
+		encodeJson(w, http.StatusOK, recipe)
 	})
 }
 
@@ -114,10 +91,6 @@ func handleDesignGetAllRecipes(recipeDb rec.RecipeDatabase) http.Handler {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		list := make([]designRecipeResponse, 0, len(recipes))
-		for _, recipe := range recipes {
-			list = append(list, internalRecipeToDesign(recipe))
-		}
-		encodeJson(w, http.StatusOK, list)
+		encodeJson(w, http.StatusOK, recipes)
 	})
 }

@@ -66,11 +66,11 @@ func TestCreateRecipeHandler(t *testing.T) {
 	t.Run("Creates a new recipe", func(t *testing.T) {
 		correctBody := map[string]interface{}{
 			"name": "My Recipe",
-			"ingredients": []string{
-				"2 Banana",
-				"2 Egg",
+			"ingredients": []map[string]string{
+				{"name": "Banana", "quantity": "2"},
+				{"name": "Egg", "quantity": "2"},
 			},
-			"steps": []string{"Cook", "me"},
+			"instructions": []string{"Cook", "me"},
 		}
 		req, _ := createRequestWithBody("POST", "/recipes", correctBody)
 		response := httptest.NewRecorder()

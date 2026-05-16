@@ -24,7 +24,7 @@ func handleDesignCreateMealPlan(recipeDb rec.RecipeDatabase) http.Handler {
 			http.Error(w, "Content-Type must be application/json", http.StatusUnsupportedMediaType)
 			return
 		}
-		var body designCreateMealPlanRequest
+		var body CreateMealPlanRequest
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			http.Error(w, "Invalid JSON body", http.StatusBadRequest)
 			return
@@ -34,7 +34,7 @@ func handleDesignCreateMealPlan(recipeDb rec.RecipeDatabase) http.Handler {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-		encodeJson(w, http.StatusCreated, designCreateMealPlanResponse{
+		encodeJson(w, http.StatusCreated, CreateMealPlanResponse{
 			ID:      mealPlanID,
 			Message: "Meal plan created successfully",
 		})

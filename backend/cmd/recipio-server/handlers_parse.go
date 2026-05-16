@@ -38,6 +38,6 @@ func handleDesignParseRecipe(parser rec.AIParser) http.Handler {
 			return
 		}
 
-		encodeJson(w, http.StatusOK, internalRecipeToDesign(recipe))
+		encodeJson(w, http.StatusOK, recipe)
 	})
 }

@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { createRecipe, parseRecipe } from "./recipe_apis";
 import { useNavigate } from "react-router";
 import { FiArrowLeft } from 'react-icons/fi';
+import { parseIngredient } from '../../utils/parseIngredient';
 
 export function AddRecipeForm() {
   const navigate = useNavigate();
@@ -22,7 +23,7 @@ export function AddRecipeForm() {
   const blankRecipe = {
     name: "",
     ingredients: [],
-    steps: [],
+    instructions: [],
   }
   const [recipe, setRecipe] = useState(blankRecipe);
   const [useAI, setUseAI] = useState(false);
@@ -46,22 +47,26 @@ export function AddRecipeForm() {
   
   const sanitize = (text) => text.replace(/[^a-zA-Z0-9\s.,\-/()°'":À-ɏ]/g, '');
 
-  const handleFormChange = (e) => {
+const handleFormChange = (e) => {
     if (e.target.name == "recipeName") {
       setRecipe({...recipe, name: sanitize(e.target.value)})
     }
     if (e.target.name == "ingredientsList") {
       setRecipe({...recipe, ingredients: sanitize(e.target.value).split(/\r?\n/)});
     }
-    if (e.target.name == "steps") {
-      setRecipe({...recipe, steps: sanitize(e.target.value).split(/\r?\n/)});
+    if (e.target.name == "instructions") {
+      setRecipe({...recipe, instructions: sanitize(e.target.value).split(/\r?\n/)});
     }
   }
   
   const addRecipeSubmitHandler = (e) => {
     e.preventDefault();
-    mutation.mutate(recipe);
-  }
+    mutation.mutate({
+      ...recipe,
+      ingredients: recipe.ingredients.filter(Boolean).map(parseIngredient),
+      instructions: recipe.instructions.filter(Boolean),
+    });
+  };
 
   const handlePreviewRecipe = async () => {
     setPreviewLoading(true);
@@ -74,7 +79,7 @@ export function AddRecipeForm() {
       const normalizedRecipe = {
         name: parsedRecipe.name || "",
         ingredients: Array.isArray(parsedRecipe.ingredients) ? parsedRecipe.ingredients : [],
-        steps: Array.isArray(parsedRecipe.steps) ? parsedRecipe.steps : [],
+        instructions: Array.isArray(parsedRecipe.instructions) ? parsedRecipe.instructions : [],
       };
       setRecipe(normalizedRecipe);
       setPreview(normalizedRecipe);
@@ -191,7 +196,12 @@ export function AddRecipeForm() {
                   <ul className="space-y-1">
                     {preview.ingredients && preview.ingredients.length > 0 ? (
                       preview.ingredients.map((ing, idx) => (
-                        <li key={idx} className="text-gray-900 text-sm">• {ing}</li>
+                        <li key={idx} className="flex items-baseline gap-2 text-sm">
+                          {ing.quantity && (
+                            <span className="italic text-gray-400 shrink-0">{ing.quantity}</span>
+                          )}
+                          <span className="text-gray-900">{ing.name}</span>
+                        </li>
                       ))
                     ) : (
                       <p className="text-gray-500 text-sm">(No ingredients)</p>
@@ -202,8 +212,8 @@ export function AddRecipeForm() {
                 <div>
                   <p className="text-sm font-medium text-gray-700 mb-2">Instructions</p>
                   <ol className="space-y-1">
-                    {preview.steps && preview.steps.length > 0 ? (
-                      preview.steps.map((step, idx) => (
+                    {preview.instructions && preview.instructions.length > 0 ? (
+                      preview.instructions.map((step, idx) => (
                         <li key={idx} className="text-gray-900 text-sm">{idx + 1}. {step}</li>
                       ))
                     ) : (
@@ -301,12 +311,12 @@ export function AddRecipeForm() {
               </label>
               <p className="text-xs text-gray-500 mb-2">One step per line</p>
               <textarea
-                id="steps"
+                id="instructions"
                 placeholder="Preheat oven to 350°F&#10;Mix ingredients together&#10;Bake for 12 minutes"
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition font-mono text-sm"
-                name="steps"
+                name="instructions"
                 onChange={handleFormChange}
-                value={recipe.steps.join('\r\n')}
+                value={recipe.instructions.join('\r\n')}
                 rows="6"
                 required
               />

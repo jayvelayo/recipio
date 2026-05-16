@@ -19,7 +19,7 @@ func handleDesignGetGroceryList(recipeDb rec.RecipeDatabase) http.Handler {
 			http.Error(w, err.Error(), http.StatusNotFound)
 			return
 		}
-		encodeJson(w, http.StatusOK, designGroceryListResponse{Ingredients: ingredients})
+		encodeJson(w, http.StatusOK, GroceryListResponse{Ingredients: ingredients})
 	})
 }
 
@@ -29,7 +29,7 @@ func handleDesignCreateGroceryList(recipeDb rec.RecipeDatabase) http.Handler {
 			http.Error(w, "Content-Type must be application/json", http.StatusUnsupportedMediaType)
 			return
 		}
-		var body designCreateGroceryListRequest
+		var body CreateGroceryListRequest
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			http.Error(w, "Invalid JSON body", http.StatusBadRequest)
 			return
@@ -43,7 +43,7 @@ func handleDesignCreateGroceryList(recipeDb rec.RecipeDatabase) http.Handler {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-		encodeJson(w, http.StatusCreated, designCreateGroceryListResponse{ID: id, Name: body.Name})
+		encodeJson(w, http.StatusCreated, CreateGroceryListResponse{ID: id, Name: body.Name})
 	})
 }
 
