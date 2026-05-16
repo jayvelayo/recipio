@@ -300,7 +300,9 @@ const handleFormChange = (e) => {
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition font-mono text-sm"
                 name="ingredientsList"
                 onChange={handleFormChange}
-                value={recipe.ingredients.join('\r\n')}
+                value={recipe.ingredients.map(ing =>
+                  typeof ing === 'string' ? ing : [ing.quantity, ing.name].filter(Boolean).join(' ')
+                ).join('\r\n')}
                 rows="6"
                 required
               />

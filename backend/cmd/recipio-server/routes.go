@@ -28,7 +28,7 @@ func SetUpRoutes(
 	mux.Handle("OPTIONS /recipes/{id}", withCORS(allowedOrigins, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})))
 
 	// AI parsing endpoint
-	mux.Handle("POST /parse-recipe", withCORS(allowedOrigins, handleDesignParseRecipe(rec.NewAIParser())))
+	mux.Handle("POST /parse-recipe", withCORS(allowedOrigins, handleDesignParseRecipe(rec.NewAIParser(os.Getenv("GROQ_API_KEY")))))
 	mux.Handle("OPTIONS /parse-recipe", withCORS(allowedOrigins, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})))
 
 	// Meal plan endpoints
