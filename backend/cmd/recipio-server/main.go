@@ -48,16 +48,6 @@ func loadEnvFile() error {
 	return nil
 }
 
-// contains checks if a string slice contains a specific item
-func contains(slice []string, item string) bool {
-	for _, s := range slice {
-		if s == item {
-			return true
-		}
-	}
-	return false
-}
-
 // newServer creates and returns the HTTP server handler with all routes
 func newServer(
 	recipeDatabase rec.RecipeDatabase,
@@ -75,39 +65,12 @@ func main() {
 		log.Printf("Warning: Could not load .env file: %v", err)
 	}
 
-	// Read allowed origins from environment variable
-	allowedOriginsStr := os.Getenv("ALLOWED_ORIGINS")
-	var allowedOrigins []string
-
-	// Always include localhost origins for development
-	localhostOrigins := []string{
+	allowedOrigins := []string{
 		"http://127.0.0.1:4002",
 		"https://127.0.0.1:4002",
 		"http://localhost:4002",
 		"https://localhost:4002",
-		"http://127.0.0.1:5173", // Vite dev server
-		"https://127.0.0.1:5173",
-		"http://localhost:5173",
-		"https://localhost:5173",
 	}
-
-	if allowedOriginsStr == "" {
-		// Default to localhost origins for development
-		allowedOrigins = localhostOrigins
-	} else {
-		// Start with localhost origins, then add configured ones
-		allowedOrigins = append(allowedOrigins, localhostOrigins...)
-
-		// Parse comma-separated list of additional origins
-		for _, origin := range strings.Split(allowedOriginsStr, ",") {
-			trimmed := strings.TrimSpace(origin)
-			if trimmed != "" && !contains(allowedOrigins, trimmed) {
-				allowedOrigins = append(allowedOrigins, trimmed)
-			}
-		}
-	}
-
-	log.Printf("Allowed CORS origins: %v", allowedOrigins)
 
 	// Initialize database
 	cacheDir, err := os.UserCacheDir()
@@ -125,11 +88,14 @@ func main() {
 	}
 	defer recipeDb.CloseDb()
 
-	// Create server and start listening
-	srv := withLogging(newServer(recipeDb, allowedOrigins))
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "4002"
+	}
 
-	log.Println("Starting server on :4002...")
-	if err := http.ListenAndServe(":4002", srv); err != nil {
+	srv := withLogging(newServer(recipeDb, allowedOrigins))
+	log.Printf("Starting server on :%s...", port)
+	if err := http.ListenAndServe(":"+port, srv); err != nil {
 		log.Fatalf("Could not start server: %s\n", err)
 	}
 }

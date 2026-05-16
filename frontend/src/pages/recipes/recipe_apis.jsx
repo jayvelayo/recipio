@@ -1,7 +1,5 @@
-import { API_BASE } from '../../apiConfig';
-
 export function getRecipes() {
-  return fetch(`${API_BASE}/recipes`, { mode: "cors" })
+  return fetch('/recipes')
     .then(res => {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       return res.json();
@@ -9,7 +7,7 @@ export function getRecipes() {
 }
 
 export function getRecipeId(id) {
-  return fetch(`${API_BASE}/recipes/${id}`, { mode: "cors" })
+  return fetch(`/recipes/${id}`)
     .then(res => {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       return res.json();
@@ -22,10 +20,9 @@ export function createRecipe(newRecipe) {
     ingredients: Array.isArray(newRecipe.ingredients) ? newRecipe.ingredients : [],
     instructions: Array.isArray(newRecipe.instructions) ? newRecipe.instructions : [],
   };
-  return fetch(`${API_BASE}/recipes`, {
+  return fetch('/recipes', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    mode: "cors",
     body: JSON.stringify(body),
   }).then(res => {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -34,10 +31,9 @@ export function createRecipe(newRecipe) {
 }
 
 export function parseRecipe(rawRecipeText) {
-  return fetch(`${API_BASE}/parse-recipe`, {
+  return fetch('/parse-recipe', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    mode: "cors",
     body: JSON.stringify({ raw_recipe_text: rawRecipeText }),
   }).then(res => {
     if (res.status === 429) throw new Error('RATE_LIMIT');
@@ -53,10 +49,9 @@ export function updateRecipe({ id, recipe }) {
     ingredients: Array.isArray(recipe.ingredients) ? recipe.ingredients : [],
     instructions: Array.isArray(recipe.instructions) ? recipe.instructions : [],
   };
-  return fetch(`${API_BASE}/recipes/${id}`, {
+  return fetch(`/recipes/${id}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
-    mode: "cors",
     body: JSON.stringify(body),
   }).then(res => {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -64,10 +59,8 @@ export function updateRecipe({ id, recipe }) {
 }
 
 export function deleteRecipe(id) {
-  return fetch(`${API_BASE}/recipes/${id}`, {
-    method: 'DELETE',
-    mode: "cors"
-  }).then(res => {
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  });
+  return fetch(`/recipes/${id}`, { method: 'DELETE' })
+    .then(res => {
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    });
 }

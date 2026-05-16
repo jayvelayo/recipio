@@ -4,28 +4,30 @@ Personal project to learn different technology stack. Using a real-world problem
 
 Also see: [Relevant XKCD](https://xkcd.com/927/)
 
+### Architecture
+
+Recipio uses a single-server architecture where the Go binary acts as both the web server and API server.
+
+```
+Browser
+   │
+   ▼
+Go Server (:4002)
+   ├── /* → serves React SPA (static files from dist/)
+   └── /recipes, /meal-plans, ... → API handlers
+```
+
+The frontend uses relative URLs for all API calls, so everything resolves to the same origin regardless of host or port. No CORS configuration needed in this setup.
+
+In development, Vite runs on port 4002 and proxies API requests to Go on port 4003, mirroring the production topology from the browser's perspective.
+
+**Future:** API servers will be separated into their own cluster behind a load balancer. The web server and API server will have distinct origins at that point, requiring CORS configuration. Only if I get the chance to do this :-)
+
 ### Development Setup
 
-1. **Configure environment:**
-   ```bash
-   # Edit .env file with your settings
-   ALLOWED_ORIGINS=http://192.168.1.170:4002
-   VITE_API_BASE=http://192.168.1.170:4002
-   ```
-
-2. **Setup symlinks:**
-   ```bash
-   cd frontend && ln -sf ../.env .env
-   ```
-
-3. **Start development servers:**
-   ```bash
-   # Terminal 1: Backend
-   cd backend && go run cmd/recipio-server/main.go
-
-   # Terminal 2: Frontend
-   cd frontend && npm run dev
-   ```
+```bash
+make dev
+```
 
 ### Testing
 
@@ -62,50 +64,8 @@ API calls are mocked via `vi.mock` so tests run without a backend.
 
 ### Production Deployment
 ```bash
-# Build and run
-./deploy/deploy.sh
-cd deploy/bin && ./recipio-server
+make all   # builds frontend + backend into deploy/bin/
+make run   # starts the server at http://localhost:4002
 ```
 
-### Configuration
-
-Both frontend and backend use a shared `.env` file for configuration:
-
-```bash
-# Backend CORS origins (comma-separated)
-ALLOWED_ORIGINS=http://192.168.1.170:4002,https://yourdomain.com
-
-# Frontend API base URL
-VITE_API_BASE=http://192.168.1.170:4002
-```
-
-**Setup:** Create a symlink for the frontend to access the `.env` file:
-```bash
-cd frontend && ln -sf ../.env .env
-```
-
-**The backend automatically loads the `.env` file** - no need to export variables or rebuild!
-
-### CORS Configuration
-
-The server supports configurable CORS origins via the `ALLOWED_ORIGINS` environment variable:
-
-```bash
-# In .env file
-ALLOWED_ORIGINS=http://192.168.1.170:4002,https://yourdomain.com
-```
-
-**Localhost origins are always allowed** for development convenience.
-
-### Frontend Configuration
-
-The frontend API base URL can be configured via the `VITE_API_BASE` environment variable:
-
-```bash
-# In .env file
-VITE_API_BASE=http://192.168.1.170:4002
-```
-
-If not set, defaults to `http://localhost:4002`.
-
-See `deploy/DEPLOYMENT.md` for comprehensive deployment options including Docker, cloud platforms, and more.
+See `deploy/DEPLOYMENT.md` for deployment options including Docker and cloud platforms.

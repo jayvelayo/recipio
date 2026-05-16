@@ -8,10 +8,14 @@ Recipio is a full-stack web app for storing recipes, creating meal plans, and ge
 
 ## Commands
 
+### Development
+```bash
+make dev     # Starts backend (port 4003) + frontend (port 4002) together
+```
+
 ### Backend (Go)
 ```bash
 cd backend
-go run cmd/recipio-server/main.go   # Dev server (port 4002)
 go test ./...                        # All tests
 go test ./internal/sqlite_db/...    # DB layer tests only
 go test ./cmd/recipio-server/...    # Handler integration tests only
@@ -21,33 +25,20 @@ go test ./cmd/recipio-server/...    # Handler integration tests only
 ```bash
 cd frontend
 npm install
-npm run dev      # Dev server (http://localhost:5173)
 npm run build
 npm run test
 npm run lint
 ```
 
-### Both at once
-```bash
-./run_server_client.sh
-```
-
 ### Production build
 ```bash
-./deploy/deploy.sh           # Builds frontend + backend into deploy/bin/
-cd deploy/bin && ./recipio-server
+make all   # Builds frontend + backend into deploy/bin/
+make run   # Starts the server at http://localhost:4002
 ```
 
 ## Environment Configuration
 
-Frontend and backend share a single `.env` file at the repo root. Frontend accesses it via symlink:
-```bash
-cd frontend && ln -sf ../.env .env
-```
-
-Key variables:
-- `ALLOWED_ORIGINS` — comma-separated CORS origins for backend (localhost always allowed)
-- `VITE_API_BASE` — frontend API URL (defaults to `http://localhost:4002`)
+No `.env` required for local development. Copy `.env.example` to `.env` to override defaults (e.g. `PORT`).
 
 ## Architecture
 
@@ -65,7 +56,7 @@ Handlers are higher-order functions returning `http.Handler`. Business logic is 
 
 - `App.jsx` — top-level layout (sidebar, header, auth gate)
 - `routes.jsx` — React Router v7 route definitions
-- `apiConfig.js` — API base URL (reads `VITE_API_BASE`)
+- `apiConfig.js` — deleted; API calls use relative URLs directly
 - `pages/` — feature pages: `recipes/`, `mealplan/`, `grocery/`, `common/`
 - `pages/common/AuthContext.jsx` — auth state via React Context + localStorage
 - API calls are co-located in `*_apis.jsx` files next to their pages and use TanStack React Query for caching/state

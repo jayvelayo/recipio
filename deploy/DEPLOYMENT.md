@@ -1,153 +1,58 @@
 # Recipio Deployment Guide
 
-Your React SPA is already properly configured and ready for deployment! Here are several deployment options:
+## Local / LAN Deployment
 
-## 🚀 Quick Local Deployment
-
-### Option 1: Single Binary (Recommended)
+### Single Binary (Recommended)
 ```bash
-# Run the deployment script
-./deploy/deploy.sh
-
-# Or manually:
-cd src/frontend && npm run build
-cp -r dist ../deploy/bin/
-cd ../backend && go build -o ../deploy/bin/recipio-server ./cmd/recipio-server
-cd ../deploy/bin && ./recipio-server
+make all   # builds frontend + backend into deploy/bin/
+make run   # starts the server at http://localhost:4002
 ```
 
-The server will serve both the SPA and API at `http://localhost:4002`
+The server serves both the frontend SPA and API at `http://localhost:4002`. No configuration required.
 
-### Configuration
-
-Both frontend and backend use a shared `.env` file for configuration:
-
+### Development Mode
 ```bash
-# Backend CORS origins
-ALLOWED_ORIGINS=https://your-frontend-domain.com,http://192.168.1.170:4002
-
-# Frontend API base URL  
-VITE_API_BASE=https://your-backend-server:4002
+make dev
 ```
 
-**The backend automatically loads the `.env` file** - no need to export variables!
+---
 
-### CORS Configuration
-
-When deploying with separate frontend and backend servers, configure allowed origins in the `.env` file:
+## Docker Deployment
 
 ```bash
-ALLOWED_ORIGINS=https://your-frontend-domain.com,http://192.168.1.170:4002
-```
-
-**Localhost origins are always allowed** for development convenience.
-
-### Frontend Configuration
-
-Configure the frontend API base URL in the `.env` file:
-
-```bash
-VITE_API_BASE=http://your-backend-server:4002
-```
-
-**Important:** Create a symlink from the frontend directory to the root `.env` file:
-```bash
-cd src/frontend && ln -sf ../.env .env
-```
-
-### Option 2: Development Mode
-```bash
-# Terminal 1: Start backend
-cd src/backend && go run ./cmd/recipio-server
-
-# Terminal 2: Start frontend dev server
-cd src/frontend && npm run dev
-```
-
-## 🐳 Docker Deployment
-
-### Build and Run Container
-```bash
-# Build the image (run from project root)
+# Build
 docker build -f deploy/Dockerfile -t recipio .
 
-# Run the container
+# Run
 docker run -p 4002:4002 recipio
-```
 
-### Using Docker Compose (with persistent data)
-```bash
-# Create data directory
-mkdir data
-
-# Run with docker-compose
+# With persistent data
+mkdir -p data
 docker-compose -f deploy/docker-compose.yml up -d
 ```
 
-## ☁️ Cloud Deployment Options
+---
 
-### Vercel (Frontend Only)
-```bash
-# Install Vercel CLI
-npm i -g vercel
+## Cloud Deployment
 
-# Deploy frontend
-cd src/frontend
-vercel --prod
-```
-
-### Railway, Render, or Fly.io (Full Stack)
+### Single-server (Railway, Render, Fly.io)
 1. Connect your GitHub repository
-2. Set build command: `./deploy/deploy.sh`
+2. Set build command: `make all`
 3. Set start command: `./deploy/bin/recipio-server`
-4. The platform will automatically detect Go and build your app
 
-### Heroku
-```yaml
-# Create heroku.yml in root
-build:
-  docker:
-    web: deploy/Dockerfile
-run:
-  web: ./deploy/bin/recipio-server
-```
+No CORS configuration needed — Go serves both the frontend and API from the same origin.
 
-### Netlify (Frontend) + Railway (Backend)
-- Deploy frontend to Netlify
-- Deploy backend to Railway
-- Update API_BASE in frontend to point to Railway URL
+### Separate frontend + backend clusters
+If the frontend (e.g. Vercel, Netlify, CDN) and backend API are on different domains, CORS will need to be configured in `middleware.go` and the frontend API calls will need an explicit base URL instead of relative paths.
 
-## 🔧 Production Optimizations
+For HTTPS deployments, ensure CORS allowed origins use `https://`.
 
-### Environment Variables
-Create a `.env` file for configuration:
-```
-API_BASE=https://your-api-domain.com
-NODE_ENV=production
-```
+---
 
-### CDN for Static Assets
-Consider using a CDN like Cloudflare for faster global delivery.
+## Deployment Checklist
 
-### SSL/TLS
-Use services like Let's Encrypt or Cloudflare for HTTPS.
-
-## 📊 Monitoring & Analytics
-
-Consider adding:
-- Error tracking (Sentry)
-- Analytics (Google Analytics, Plausible)
-- Performance monitoring (Lighthouse, Web Vitals)
-
-## 🎯 Deployment Checklist
-
-- [ ] Test build locally: `npm run build`
-- [ ] Test API endpoints
-- [ ] Verify CORS settings
-- [ ] Check responsive design
-- [ ] Test in different browsers
-- [ ] Set up domain and SSL
-- [ ] Configure monitoring
-- [ ] Set up backups for database
-
-Your SPA is production-ready with code splitting, minification, and optimized assets!
+- [ ] Run `make all` and test the binary locally with `make run`
+- [ ] Verify API endpoints respond correctly
+- [ ] Check CORS if frontend and backend are on separate domains
+- [ ] Set up SSL/TLS (Let's Encrypt, Cloudflare)
+- [ ] Set up database backups (`~/.cache/recipio/recipes.db`)
