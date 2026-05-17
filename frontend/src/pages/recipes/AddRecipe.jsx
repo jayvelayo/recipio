@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { createRecipe, parseRecipe, parseRecipeURL } from "./recipe_apis";
-import { useNavigate } from "react-router";
+import { useNavigate, useBlocker } from "react-router";
 import { FiArrowLeft } from 'react-icons/fi';
 import { parseIngredient } from '../../utils/parseIngredient';
 import { toast } from 'sonner';
@@ -37,6 +37,27 @@ export function AddRecipeForm() {
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState(null);
   const [progress, setProgress] = useState(0);
+
+  const isDirty =
+    recipe.name.trim() !== "" ||
+    recipe.ingredients.some(i => (typeof i === 'string' ? i : i.name ?? '').trim()) ||
+    recipe.instructions.some(Boolean) ||
+    recipe.tags.length > 0 ||
+    rawRecipeText.trim() !== "" ||
+    recipeURL.trim() !== "";
+
+  const blocker = useBlocker(isDirty && !mutation.isSuccess);
+
+  useEffect(() => {
+    const onBeforeUnload = (e) => {
+      if (isDirty && !mutation.isSuccess) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', onBeforeUnload);
+    return () => window.removeEventListener('beforeunload', onBeforeUnload);
+  }, [isDirty, mutation.isSuccess]);
 
   useEffect(() => {
     if (!previewLoading) {
@@ -154,6 +175,9 @@ const handleFormChange = (e) => {
             <button
               key={m}
               onClick={() => {
+                if (m !== mode && isDirty) {
+                  if (!window.confirm('You have unsaved changes. Switch tabs and lose your work?')) return;
+                }
                 setMode(m);
                 setPreview(null);
                 setPreviewError(null);
@@ -390,6 +414,28 @@ const handleFormChange = (e) => {
           </form>
         )}
       </div>
+      {blocker.state === 'blocked' && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-sm mx-4 shadow-xl">
+            <h2 className="text-lg font-semibold text-gray-900 mb-2">Discard changes?</h2>
+            <p className="text-sm text-gray-600 mb-6">You have unsaved changes. If you leave, your work will be lost.</p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => blocker.proceed()}
+                className="flex-1 bg-red-600 text-white font-medium py-2 rounded-lg hover:bg-red-700 transition"
+              >
+                Leave anyway
+              </button>
+              <button
+                onClick={() => blocker.reset()}
+                className="flex-1 bg-gray-200 text-gray-900 font-medium py-2 rounded-lg hover:bg-gray-300 transition"
+              >
+                Stay
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
