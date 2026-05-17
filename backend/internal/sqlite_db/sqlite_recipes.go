@@ -6,50 +6,47 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/google/uuid"
 	rec "github.com/jayvelayo/recipio/internal/recipes"
 )
 
-func (iface *SqliteDatabaseContext) CreateRecipe(userID string, newRecipe rec.Recipe) (uint64, error) {
+func (iface *SqliteDatabaseContext) CreateRecipe(userID string, newRecipe rec.Recipe) (string, error) {
 	db := iface.sqliteDb
 	tx, err := db.Begin()
 	if err != nil {
-		return 0, fmt.Errorf("failed to begin transaction: %w", err)
+		return "", fmt.Errorf("failed to begin transaction: %w", err)
 	}
 	defer tx.Rollback()
 
+	recipeID := uuid.New().String()
 	instructions := encodeInstructionList(newRecipe.Instructions)
-	res, err := tx.Exec("INSERT INTO recipes (user_id, name, instruction) VALUES (?, ?, ?)", userID, newRecipe.Name, instructions)
+	_, err = tx.Exec("INSERT INTO recipes (id, user_id, name, instruction) VALUES (?, ?, ?, ?)", recipeID, userID, newRecipe.Name, instructions)
 	if err != nil {
-		return 0, fmt.Errorf("failed to insert recipe: %w", err)
-	}
-
-	recipeID, err := res.LastInsertId()
-	if err != nil {
-		return 0, fmt.Errorf("failed to get inserted recipe ID: %w", err)
+		return "", fmt.Errorf("failed to insert recipe: %w", err)
 	}
 
 	stmt, err := tx.Prepare("INSERT INTO ingredients (recipe_id, name, quantity) VALUES (?, ?, ?)")
 	if err != nil {
-		return 0, fmt.Errorf("failed to prepare ingredient insert: %w", err)
+		return "", fmt.Errorf("failed to prepare ingredient insert: %w", err)
 	}
 	defer stmt.Close()
 
 	for _, ing := range newRecipe.Ingredients {
 		if ing.Name == "" {
-			return 0, fmt.Errorf("ingredient name cannot be empty")
+			return "", fmt.Errorf("ingredient name cannot be empty")
 		}
 		if _, err := stmt.Exec(recipeID, ing.Name, ing.Quantity); err != nil {
-			return 0, fmt.Errorf("failed to insert ingredient (%s): %w", ing.Name, err)
+			return "", fmt.Errorf("failed to insert ingredient (%s): %w", ing.Name, err)
 		}
 	}
 
 	if err := tx.Commit(); err != nil {
-		return 0, fmt.Errorf("failed to commit transaction: %w", err)
+		return "", fmt.Errorf("failed to commit transaction: %w", err)
 	}
-	return uint64(recipeID), nil
+	return recipeID, nil
 }
 
-func (ctx *SqliteDatabaseContext) GetRecipe(id int) (rec.Recipe, error) {
+func (ctx *SqliteDatabaseContext) GetRecipe(id string) (rec.Recipe, error) {
 	db := ctx.sqliteDb
 	var recipe rec.Recipe
 	var instructions string
@@ -57,7 +54,7 @@ func (ctx *SqliteDatabaseContext) GetRecipe(id int) (rec.Recipe, error) {
 	row := db.QueryRow("SELECT id, name, instruction FROM recipes WHERE id = ?", id)
 	if err := row.Scan(&recipe.ID, &recipe.Name, &instructions); err != nil {
 		if err == sql.ErrNoRows {
-			return rec.Recipe{}, fmt.Errorf("recipe with id %d not found", id)
+			return rec.Recipe{}, fmt.Errorf("recipe with id %s not found", id)
 		}
 		return rec.Recipe{}, err
 	}
@@ -79,7 +76,7 @@ func (ctx *SqliteDatabaseContext) GetRecipe(id int) (rec.Recipe, error) {
 	return recipe, nil
 }
 
-func (ctx *SqliteDatabaseContext) UpdateRecipe(id int, recipe rec.Recipe) error {
+func (ctx *SqliteDatabaseContext) UpdateRecipe(id string, recipe rec.Recipe) error {
 	db := ctx.sqliteDb
 	tx, err := db.Begin()
 	if err != nil {
@@ -97,7 +94,7 @@ func (ctx *SqliteDatabaseContext) UpdateRecipe(id int, recipe rec.Recipe) error 
 		return fmt.Errorf("failed to get affected rows: %w", err)
 	}
 	if rowsAffected == 0 {
-		return fmt.Errorf("recipe with id %d not found", id)
+		return fmt.Errorf("recipe with id %s not found", id)
 	}
 
 	if _, err := tx.Exec("DELETE FROM ingredients WHERE recipe_id = ?", id); err != nil {
@@ -125,7 +122,7 @@ func (ctx *SqliteDatabaseContext) UpdateRecipe(id int, recipe rec.Recipe) error 
 	return nil
 }
 
-func (ctx *SqliteDatabaseContext) DeleteRecipe(id int) error {
+func (ctx *SqliteDatabaseContext) DeleteRecipe(id string) error {
 	db := ctx.sqliteDb
 	tx, err := db.Begin()
 	if err != nil {
@@ -146,7 +143,7 @@ func (ctx *SqliteDatabaseContext) DeleteRecipe(id int) error {
 		return fmt.Errorf("failed to get affected rows: %w", err)
 	}
 	if rowsAffected == 0 {
-		return fmt.Errorf("recipe with id %d not found", id)
+		return fmt.Errorf("recipe with id %s not found", id)
 	}
 
 	if err := tx.Commit(); err != nil {
@@ -172,14 +169,14 @@ func (ctx *SqliteDatabaseContext) GetAllRecipes(userID string) (rec.Recipes, err
 	var recipes rec.Recipes
 	var current rec.Recipe
 	for rows.Next() {
-		var id int
+		var id string
 		var name, instruction string
 		var ingName, ingQty sql.NullString
 		if err := rows.Scan(&id, &name, &instruction, &ingName, &ingQty); err != nil {
 			return rec.Recipes{}, err
 		}
 		if current.ID != id {
-			if current.ID != 0 {
+			if current.ID != "" {
 				recipes = append(recipes, current)
 			}
 			current = rec.Recipe{
@@ -195,13 +192,13 @@ func (ctx *SqliteDatabaseContext) GetAllRecipes(userID string) (rec.Recipes, err
 			})
 		}
 	}
-	if current.ID != 0 {
+	if current.ID != "" {
 		recipes = append(recipes, current)
 	}
 	return recipes, nil
 }
 
-func (ctx *SqliteDatabaseContext) AddRecipeToMealPlan(id int) error {
+func (ctx *SqliteDatabaseContext) AddRecipeToMealPlan(id string) error {
 	return nil
 }
 
@@ -229,12 +226,12 @@ func (ctx *SqliteDatabaseContext) CreateMealPlan(userID string, recipeIDs []stri
 	defer stmt.Close()
 
 	for _, idStr := range recipeIDs {
-		id, err := strconv.Atoi(strings.TrimSpace(idStr))
-		if err != nil || id < 1 {
+		idStr = strings.TrimSpace(idStr)
+		if idStr == "" {
 			continue
 		}
-		if _, err = stmt.Exec(mealPlanID, id); err != nil {
-			return "", fmt.Errorf("failed to link recipe %d to meal plan: %w", id, err)
+		if _, err = stmt.Exec(mealPlanID, idStr); err != nil {
+			return "", fmt.Errorf("failed to link recipe %s to meal plan: %w", idStr, err)
 		}
 	}
 
@@ -297,9 +294,9 @@ func (ctx *SqliteDatabaseContext) GetGroceryList(mealPlanID string) ([]string, e
 	}
 	defer rows.Close()
 
-	var recipeIDs []int
+	var recipeIDs []string
 	for rows.Next() {
-		var rid int
+		var rid string
 		if err := rows.Scan(&rid); err != nil {
 			return nil, err
 		}

@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"net/http"
-	"strconv"
 
 	rec "github.com/jayvelayo/recipio/internal/recipes"
 )
@@ -45,7 +44,7 @@ func handleDesignCreateRecipe(recipeDb rec.RecipeDatabase) http.Handler {
 			return
 		}
 		encodeJson(w, http.StatusCreated, CreateRecipeResponse{
-			ID:      strconv.FormatUint(recipeID, 10),
+			ID:      recipeID,
 			Message: "Recipe created successfully",
 		})
 	})
@@ -57,12 +56,7 @@ func handleDesignUpdateRecipe(recipeDb rec.RecipeDatabase) http.Handler {
 			http.Error(w, "Content-Type must be application/json", http.StatusUnsupportedMediaType)
 			return
 		}
-		idStr := r.PathValue("id")
-		id, err := strconv.Atoi(idStr)
-		if err != nil || id < 1 {
-			http.Error(w, "Invalid recipe id", http.StatusBadRequest)
-			return
-		}
+		id := r.PathValue("id")
 		var recipe rec.Recipe
 		if err := json.NewDecoder(r.Body).Decode(&recipe); err != nil {
 			http.Error(w, "Invalid JSON body", http.StatusBadRequest)
@@ -97,14 +91,8 @@ func handleDesignUpdateRecipe(recipeDb rec.RecipeDatabase) http.Handler {
 
 func handleDesignDeleteRecipe(recipeDb rec.RecipeDatabase) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		idStr := r.PathValue("id")
-		id, err := strconv.Atoi(idStr)
-		if err != nil || id < 1 {
-			http.Error(w, "Invalid recipe id", http.StatusBadRequest)
-			return
-		}
-		err = recipeDb.DeleteRecipe(id)
-		if err != nil {
+		id := r.PathValue("id")
+		if err := recipeDb.DeleteRecipe(id); err != nil {
 			http.Error(w, err.Error(), http.StatusNotFound)
 			return
 		}
@@ -114,12 +102,7 @@ func handleDesignDeleteRecipe(recipeDb rec.RecipeDatabase) http.Handler {
 
 func handleDesignGetRecipe(recipeDb rec.RecipeDatabase) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		idStr := r.PathValue("id")
-		id, err := strconv.Atoi(idStr)
-		if err != nil || id < 1 {
-			http.Error(w, "Invalid recipe id", http.StatusBadRequest)
-			return
-		}
+		id := r.PathValue("id")
 		recipe, err := recipeDb.GetRecipe(id)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusNotFound)

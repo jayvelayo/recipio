@@ -6,45 +6,48 @@ import (
 )
 
 type MockRecipeDatabase struct {
-	recipes       []Recipe
-	recipeCount   int
-	mealPlans     []MealPlanSummary
+	recipes      []Recipe
+	nextID       int
+	mealPlans    []MealPlanSummary
 	mealPlanCount int
-	groceryLists  []GroceryList
-	groceryCount  int
+	groceryLists []GroceryList
+	groceryCount int
 }
 
-func (db *MockRecipeDatabase) CreateRecipe(userID string, newRecipe Recipe) (uint64, error) {
+func (db *MockRecipeDatabase) CreateRecipe(userID string, newRecipe Recipe) (string, error) {
 	if newRecipe.Name == "" {
-		return 0, fmt.Errorf("recipe name cannot be empty")
+		return "", fmt.Errorf("recipe name cannot be empty")
 	}
 	for _, recipe := range db.recipes {
 		if newRecipe.Name == recipe.Name {
-			return 0, fmt.Errorf("recipe with this name already exists")
+			return "", fmt.Errorf("recipe with this name already exists")
 		}
 	}
-	newRecipe.ID = db.recipeCount + 1
-	db.recipeCount++
+	db.nextID++
+	id := strconv.Itoa(db.nextID)
+	newRecipe.ID = id
 	db.recipes = append(db.recipes, newRecipe)
-	return uint64(newRecipe.ID), nil
+	return id, nil
 }
 
 func (db *MockRecipeDatabase) GetRecipeCount() int {
-	return db.recipeCount
+	return len(db.recipes)
 }
 
-func (db *MockRecipeDatabase) GetRecipe(id int) (Recipe, error) {
-	if id < 1 || id > db.recipeCount {
-		return Recipe{}, fmt.Errorf("recipe not found")
+func (db *MockRecipeDatabase) GetRecipe(id string) (Recipe, error) {
+	for _, r := range db.recipes {
+		if r.ID == id {
+			return r, nil
+		}
 	}
-	return db.recipes[id-1], nil
+	return Recipe{}, fmt.Errorf("recipe not found")
 }
 
 func (db *MockRecipeDatabase) GetAllRecipes(userID string) (Recipes, error) {
 	return db.recipes, nil
 }
 
-func (db *MockRecipeDatabase) AddRecipeToMealPlan(id int) error {
+func (db *MockRecipeDatabase) AddRecipeToMealPlan(id string) error {
 	return nil
 }
 
@@ -118,23 +121,25 @@ func (db *MockRecipeDatabase) DeleteGroceryList(id string) error {
 	return fmt.Errorf("grocery list not found")
 }
 
-func (db *MockRecipeDatabase) UpdateRecipe(id int, recipe Recipe) error {
-	if id < 1 || id > db.recipeCount {
-		return fmt.Errorf("recipe not found")
+func (db *MockRecipeDatabase) UpdateRecipe(id string, recipe Recipe) error {
+	for i, r := range db.recipes {
+		if r.ID == id {
+			recipe.ID = id
+			db.recipes[i] = recipe
+			return nil
+		}
 	}
-	recipe.ID = id
-	db.recipes[id-1] = recipe
-	return nil
+	return fmt.Errorf("recipe not found")
 }
 
-func (db *MockRecipeDatabase) DeleteRecipe(id int) error {
-	if id < 1 || id > db.recipeCount {
-		return fmt.Errorf("recipe not found")
+func (db *MockRecipeDatabase) DeleteRecipe(id string) error {
+	for i, r := range db.recipes {
+		if r.ID == id {
+			db.recipes = append(db.recipes[:i], db.recipes[i+1:]...)
+			return nil
+		}
 	}
-	// Remove the recipe from the slice
-	db.recipes = append(db.recipes[:id-1], db.recipes[id:]...)
-	db.recipeCount--
-	return nil
+	return fmt.Errorf("recipe not found")
 }
 
 func (db *MockRecipeDatabase) CloseDb() {

@@ -1,12 +1,12 @@
 package recipes
 
 type RecipeDatabase interface {
-	CreateRecipe(userID string, recipe Recipe) (uint64, error)
-	GetRecipe(id int) (Recipe, error)
+	CreateRecipe(userID string, recipe Recipe) (string, error)
+	GetRecipe(id string) (Recipe, error)
 	GetAllRecipes(userID string) (Recipes, error)
-	UpdateRecipe(id int, recipe Recipe) error
-	DeleteRecipe(id int) error
-	AddRecipeToMealPlan(id int) error
+	UpdateRecipe(id string, recipe Recipe) error
+	DeleteRecipe(id string) error
+	AddRecipeToMealPlan(id string) error
 	CreateMealPlan(userID string, recipeIDs []string) (mealPlanID string, err error)
 	GetAllMealPlans(userID string) ([]MealPlanSummary, error)
 	GetGroceryList(mealPlanID string) (ingredients []string, err error)

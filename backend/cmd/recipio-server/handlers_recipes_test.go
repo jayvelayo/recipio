@@ -70,7 +70,7 @@ func TestGetRecipeHandler(t *testing.T) {
 	})
 
 	t.Run("Returns 404 for non-existent recipe", func(t *testing.T) {
-		req, _ := http.NewRequest("GET", "/recipes/999", nil)
+		req, _ := http.NewRequest("GET", "/recipes/nonexistent-id", nil)
 		response := httptest.NewRecorder()
 		handler.ServeHTTP(response, req)
 		if response.Code != http.StatusNotFound {
@@ -127,7 +127,7 @@ func TestUpdateRecipeHandler(t *testing.T) {
 			"ingredients":  []map[string]string{{"name": "Sugar", "quantity": "1 cup"}},
 			"instructions": []string{"Mix well"},
 		}
-		req, _ := createRequestWithBody("PUT", "/recipes/999", body)
+		req, _ := createRequestWithBody("PUT", "/recipes/nonexistent-id", body)
 		response := httptest.NewRecorder()
 		handler.ServeHTTP(response, req)
 		if response.Code != http.StatusNotFound {
@@ -145,17 +145,8 @@ func TestDeleteRecipeHandler(t *testing.T) {
 	})
 	handler := createFakeServer(&mockdb)
 
-	t.Run("Returns 400 for invalid recipe ID", func(t *testing.T) {
-		req, _ := http.NewRequest("DELETE", "/recipes/abc", nil)
-		response := httptest.NewRecorder()
-		handler.ServeHTTP(response, req)
-		if response.Code != http.StatusBadRequest {
-			t.Errorf("Expected status code %d, got %d", http.StatusBadRequest, response.Code)
-		}
-	})
-
 	t.Run("Returns 404 for non-existent recipe", func(t *testing.T) {
-		req, _ := http.NewRequest("DELETE", "/recipes/999", nil)
+		req, _ := http.NewRequest("DELETE", "/recipes/nonexistent-id", nil)
 		response := httptest.NewRecorder()
 		handler.ServeHTTP(response, req)
 		if response.Code != http.StatusNotFound {

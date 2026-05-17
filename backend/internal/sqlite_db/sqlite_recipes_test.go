@@ -18,7 +18,7 @@ func initRecipeDB(t *testing.T) rec.RecipeDatabase {
 }
 
 func TestCreateRecipe(t *testing.T) {
-	t.Run("creates a recipe and returns a non-zero ID", func(t *testing.T) {
+	t.Run("creates a recipe and returns a non-empty ID", func(t *testing.T) {
 		db := initRecipeDB(t)
 		recipe := rec.Recipe{
 			Name:         "Pasta",
@@ -29,17 +29,17 @@ func TestCreateRecipe(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if id == 0 {
-			t.Error("expected non-zero ID")
+		if id == "" {
+			t.Error("expected non-empty ID")
 		}
 	})
 
-	t.Run("IDs increment for successive recipes", func(t *testing.T) {
+	t.Run("successive recipes get unique IDs", func(t *testing.T) {
 		db := initRecipeDB(t)
 		id1, _ := db.CreateRecipe("test-user", rec.Recipe{Name: "Recipe A", Instructions: rec.InstructionList{"Step 1"}})
 		id2, _ := db.CreateRecipe("test-user", rec.Recipe{Name: "Recipe B", Instructions: rec.InstructionList{"Step 1"}})
-		if id2 <= id1 {
-			t.Errorf("expected id2 (%d) > id1 (%d)", id2, id1)
+		if id1 == id2 {
+			t.Errorf("expected unique IDs, got %q for both", id1)
 		}
 	})
 
@@ -73,7 +73,7 @@ func TestGetRecipe(t *testing.T) {
 			t.Fatalf("failed to create recipe: %v", err)
 		}
 
-		got, err := db.GetRecipe(int(id))
+		got, err := db.GetRecipe(id)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -90,7 +90,7 @@ func TestGetRecipe(t *testing.T) {
 
 	t.Run("returns error for non-existent ID", func(t *testing.T) {
 		db := initRecipeDB(t)
-		_, err := db.GetRecipe(9999)
+		_, err := db.GetRecipe("nonexistent-id")
 		if err == nil {
 			t.Error("expected error for non-existent recipe, got nil")
 		}
@@ -142,11 +142,11 @@ func TestUpdateRecipe(t *testing.T) {
 			Instructions: rec.InstructionList{"New step 1", "New step 2"},
 			Ingredients:  []rec.Ingredient{{Name: "new ingredient", Quantity: "2 cups"}},
 		}
-		if err := db.UpdateRecipe(int(id), updated); err != nil {
+		if err := db.UpdateRecipe(id, updated); err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
 
-		got, err := db.GetRecipe(int(id))
+		got, err := db.GetRecipe(id)
 		if err != nil {
 			t.Fatalf("unexpected error fetching updated recipe: %v", err)
 		}
@@ -163,7 +163,7 @@ func TestUpdateRecipe(t *testing.T) {
 
 	t.Run("returns error for non-existent recipe ID", func(t *testing.T) {
 		db := initRecipeDB(t)
-		err := db.UpdateRecipe(9999, rec.Recipe{Name: "Ghost", Instructions: rec.InstructionList{"Step"}})
+		err := db.UpdateRecipe("nonexistent-id", rec.Recipe{Name: "Ghost", Instructions: rec.InstructionList{"Step"}})
 		if err == nil {
 			t.Error("expected error for non-existent recipe, got nil")
 		}
@@ -182,11 +182,11 @@ func TestDeleteRecipe(t *testing.T) {
 			t.Fatalf("failed to create recipe: %v", err)
 		}
 
-		if err := db.DeleteRecipe(int(id)); err != nil {
+		if err := db.DeleteRecipe(id); err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
 
-		_, err = db.GetRecipe(int(id))
+		_, err = db.GetRecipe(id)
 		if err == nil {
 			t.Error("expected error fetching deleted recipe, got nil")
 		}
@@ -194,7 +194,7 @@ func TestDeleteRecipe(t *testing.T) {
 
 	t.Run("returns error for non-existent recipe", func(t *testing.T) {
 		db := initRecipeDB(t)
-		err := db.DeleteRecipe(9999)
+		err := db.DeleteRecipe("nonexistent-id")
 		if err == nil {
 			t.Error("expected error for non-existent recipe, got nil")
 		}
