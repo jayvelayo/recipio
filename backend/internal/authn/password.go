@@ -1,16 +1,24 @@
 package authn
 
 import (
+	"errors"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 )
 
+var ErrEmailNotVerified = errors.New("email not verified")
+
 type PasswordDatabase interface {
 	AuthDatabase
 	GetPasswordHash(userID string) (string, error)
 	StorePasswordHash(userID string, hash string) error
+	CreateEmailVerification(userID, hashedToken string, expires time.Time) error
+	GetUserIDByVerificationToken(hashedToken string) (string, error)
+	MarkEmailVerified(userID string) error
+	IsEmailVerified(userID string) (bool, error)
 }
 
 type PasswordAuthenticator struct {
@@ -65,6 +73,13 @@ func (a PasswordAuthenticator) VerifyPassword(email string, password string) (st
 	err = bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
 	if err != nil {
 		return "", fmt.Errorf("Incorrect password")
+	}
+	verified, err := a.DB.IsEmailVerified(userID.String())
+	if err != nil {
+		return "", fmt.Errorf("Error checking email verification for user %s: %w", email, err)
+	}
+	if !verified {
+		return "", ErrEmailNotVerified
 	}
 	sessionToken, err := a.DB.CreateSession(userID.String())
 	if err != nil {

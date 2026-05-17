@@ -45,6 +45,11 @@ func InitDb(db_path string) (rec.RecipeDatabase, error) {
 	if err != nil {
 		return nil, fmt.Errorf("unable to initialize db: %v", err)
 	}
+	// Migrate existing databases that predate the email_verified column.
+	_, err = db.Exec(`ALTER TABLE users ADD COLUMN email_verified BOOLEAN NOT NULL DEFAULT FALSE`)
+	if err != nil && !strings.Contains(err.Error(), "duplicate column name") {
+		return nil, fmt.Errorf("failed to migrate users table: %w", err)
+	}
 	sqliteDb := &SqliteDatabaseContext{
 		sqliteDb: db,
 	}

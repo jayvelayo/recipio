@@ -37,7 +37,7 @@ const testUserID = "test-user-id"
 
 func createFakeServer(db rec.RecipeDatabase) http.Handler {
 	mux := http.NewServeMux()
-	SetUpRoutes(mux, db, nil, []string{}, nil, authn.GoogleOAuthConfig{})
+	SetUpRoutes(mux, db, nil, []string{}, nil, authn.GoogleOAuthConfig{}, authn.EmailSender{})
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := context.WithValue(r.Context(), userIDKey, testUserID)
 		mux.ServeHTTP(w, r.WithContext(ctx))

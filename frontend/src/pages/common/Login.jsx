@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '/src/pages/common/AuthContext';
 import { loginAPI, getUserInfo } from '/src/pages/common/auth_apis';
 import { FiMail, FiLock } from 'react-icons/fi';
@@ -8,6 +8,15 @@ function Login({ onShowRegister }) {
     const [formData, setFormData] = useState({ email: '', password: '' });
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+    const [emailVerified, setEmailVerified] = useState(false);
+
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('email_verified') === 'true') {
+            setEmailVerified(true);
+            window.history.replaceState(null, '', window.location.pathname);
+        }
+    }, []);
 
     const handleFormChange = (e) => {
         const { name, value } = e.target;
@@ -37,6 +46,12 @@ function Login({ onShowRegister }) {
                         <h1 className="text-4xl font-bold text-indigo-600 mb-2">Recipio</h1>
                         <p className="text-gray-600">Sign in to your account</p>
                     </div>
+
+                    {emailVerified && (
+                        <div className="mb-4 px-4 py-3 bg-green-50 border border-green-200 text-green-700 text-sm rounded-lg">
+                            Email verified! You can now sign in.
+                        </div>
+                    )}
 
                     {error && (
                         <div className="mb-4 px-4 py-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg">

@@ -3,6 +3,7 @@ package authn
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -65,6 +66,22 @@ func (m *mockPasswordDatabase) GetPasswordHash(userID string) (string, error) {
 func (m *mockPasswordDatabase) StorePasswordHash(userID, hash string) error {
 	m.passwords[userID] = hash
 	return nil
+}
+
+func (m *mockPasswordDatabase) CreateEmailVerification(userID, hashedToken string, expires time.Time) error {
+	return nil
+}
+
+func (m *mockPasswordDatabase) GetUserIDByVerificationToken(hashedToken string) (string, error) {
+	return "", nil
+}
+
+func (m *mockPasswordDatabase) MarkEmailVerified(userID string) error {
+	return nil
+}
+
+func (m *mockPasswordDatabase) IsEmailVerified(userID string) (bool, error) {
+	return true, nil
 }
 
 func TestPasswordCreateCredentials(t *testing.T) {

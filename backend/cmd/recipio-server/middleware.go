@@ -3,10 +3,14 @@ package main
 import (
 	"context"
 	"log"
+	"net"
 	"net/http"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/jayvelayo/recipio/internal/authn"
+	"golang.org/x/time/rate"
 )
 
 type contextKey string
@@ -66,6 +70,64 @@ func withAuth(authDB authn.AuthDatabase, next http.Handler) http.Handler {
 		ctx := context.WithValue(r.Context(), userIDKey, userID)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
+}
+
+type ipLimiter struct {
+	limiter  *rate.Limiter
+	lastSeen time.Time
+}
+
+type rateLimiterStore struct {
+	mu       sync.Mutex
+	limiters map[string]*ipLimiter
+	lim      rate.Limit
+	burst    int
+}
+
+func newRateLimiterStore(limit rate.Limit, burst int) *rateLimiterStore {
+	s := &rateLimiterStore{
+		limiters: make(map[string]*ipLimiter),
+		lim:      limit,
+		burst:    burst,
+	}
+	go func() {
+		for {
+			time.Sleep(10 * time.Minute)
+			s.mu.Lock()
+			for ip, l := range s.limiters {
+				if time.Since(l.lastSeen) > 30*time.Minute {
+					delete(s.limiters, ip)
+				}
+			}
+			s.mu.Unlock()
+		}
+	}()
+	return s
+}
+
+func (s *rateLimiterStore) getLimiter(ip string) *rate.Limiter {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if l, ok := s.limiters[ip]; ok {
+		l.lastSeen = time.Now()
+		return l.limiter
+	}
+	lim := rate.NewLimiter(s.lim, s.burst)
+	s.limiters[ip] = &ipLimiter{limiter: lim, lastSeen: time.Now()}
+	return lim
+}
+
+func withRateLimit(store *rateLimiterStore) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ip, _, _ := net.SplitHostPort(r.RemoteAddr)
+			if !store.getLimiter(ip).Allow() {
+				http.Error(w, "Too many requests, please try again later", http.StatusTooManyRequests)
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
 }
 
 func withCORS(allowedOrigins []string, handler http.Handler) http.Handler {

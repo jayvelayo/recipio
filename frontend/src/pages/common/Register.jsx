@@ -37,8 +37,8 @@ function Register({ onShowLogin }) {
                 <div className="w-full max-w-md">
                     <div className="bg-white rounded-lg shadow-xl p-8 text-center">
                         <h1 className="text-4xl font-bold text-indigo-600 mb-2">Recipio</h1>
-                        <p className="text-gray-700 font-medium mt-6 mb-2">Account created!</p>
-                        <p className="text-gray-500 text-sm mb-6">You can now sign in with your email and password.</p>
+                        <p className="text-gray-700 font-medium mt-6 mb-2">Check your email</p>
+                        <p className="text-gray-500 text-sm mb-6">We sent a verification link to <strong>{formData.email}</strong>. Click it to activate your account.</p>
                         <button
                             onClick={onShowLogin}
                             className="w-full bg-indigo-600 text-white font-medium py-2 rounded-lg hover:bg-indigo-700 transition duration-200"

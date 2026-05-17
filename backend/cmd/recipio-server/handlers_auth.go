@@ -2,9 +2,13 @@ package main
 
 import (
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/hex"
+	"errors"
+	"log"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/jayvelayo/recipio/internal/authn"
 )
@@ -96,7 +100,7 @@ func handleGetUserInfo(authDB authn.PasswordDatabase) http.Handler {
 	})
 }
 
-func handlePasswordRegister(authDB authn.PasswordDatabase) http.Handler {
+func handlePasswordRegister(authDB authn.PasswordDatabase, sender authn.EmailSender) http.Handler {
 	auth := authn.PasswordAuthenticator{DB: authDB}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("Content-Type") != "application/json" {
@@ -120,7 +124,60 @@ func handlePasswordRegister(authDB authn.PasswordDatabase) http.Handler {
 			}
 			return
 		}
+
+		if sender.APIKey == "" {
+			// No email service configured: auto-verify for local dev.
+			userID, err := authDB.GetUserIDByEmail(body.Email)
+			if err == nil {
+				authDB.MarkEmailVerified(userID.String())
+			}
+			w.WriteHeader(http.StatusCreated)
+			return
+		}
+
+		userID, err := authDB.GetUserIDByEmail(body.Email)
+		if err != nil {
+			http.Error(w, "Failed to create account", http.StatusInternalServerError)
+			return
+		}
+		rawBytes := make([]byte, 32)
+		rand.Read(rawBytes)
+		rawToken := hex.EncodeToString(rawBytes)
+		hash := sha256.Sum256([]byte(rawToken))
+		hashedToken := hex.EncodeToString(hash[:])
+		expires := time.Now().Add(24 * time.Hour)
+		if err := authDB.CreateEmailVerification(userID.String(), hashedToken, expires); err != nil {
+			http.Error(w, "Failed to create account", http.StatusInternalServerError)
+			return
+		}
+		if err := sender.SendVerificationEmail(body.Email, body.Name, rawToken); err != nil {
+			log.Printf("ERROR sending verification email to %s: %v", body.Email, err)
+			http.Error(w, "Failed to send verification email", http.StatusInternalServerError)
+			return
+		}
 		w.WriteHeader(http.StatusCreated)
+	})
+}
+
+func handleEmailVerification(authDB authn.PasswordDatabase, appURL string) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		rawToken := r.URL.Query().Get("token")
+		if rawToken == "" {
+			http.Error(w, "Missing token", http.StatusBadRequest)
+			return
+		}
+		hash := sha256.Sum256([]byte(rawToken))
+		hashedToken := hex.EncodeToString(hash[:])
+		userID, err := authDB.GetUserIDByVerificationToken(hashedToken)
+		if err != nil {
+			http.Error(w, "Invalid or expired verification link", http.StatusBadRequest)
+			return
+		}
+		if err := authDB.MarkEmailVerified(userID); err != nil {
+			http.Error(w, "Failed to verify email", http.StatusInternalServerError)
+			return
+		}
+		http.Redirect(w, r, appURL+"/?email_verified=true", http.StatusTemporaryRedirect)
 	})
 }
 
@@ -142,6 +199,10 @@ func handlePasswordLogin(authDB authn.PasswordDatabase) http.Handler {
 		}
 		token, err := auth.VerifyPassword(body.Email, body.Password)
 		if err != nil {
+			if errors.Is(err, authn.ErrEmailNotVerified) {
+				http.Error(w, "Please verify your email address before signing in", http.StatusForbidden)
+				return
+			}
 			http.Error(w, "Invalid email or password", http.StatusUnauthorized)
 			return
 		}

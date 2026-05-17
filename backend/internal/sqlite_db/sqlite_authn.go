@@ -125,6 +125,43 @@ func (db *SqliteDatabaseContext) StorePasswordHash(userID string, hash string) e
 	return nil
 }
 
+func (db *SqliteDatabaseContext) CreateEmailVerification(userID, hashedToken string, expires time.Time) error {
+	_, err := db.sqliteDb.Exec(
+		"INSERT OR REPLACE INTO email_verifications (token, user_id, expires) VALUES (?, ?, ?)",
+		hashedToken, userID, expires,
+	)
+	return err
+}
+
+func (db *SqliteDatabaseContext) GetUserIDByVerificationToken(hashedToken string) (string, error) {
+	var userID string
+	err := db.sqliteDb.QueryRow(
+		"SELECT user_id FROM email_verifications WHERE token = ? AND expires > ?",
+		hashedToken, time.Now(),
+	).Scan(&userID)
+	if err == sql.ErrNoRows {
+		return "", fmt.Errorf("invalid or expired verification token")
+	}
+	return userID, err
+}
+
+func (db *SqliteDatabaseContext) MarkEmailVerified(userID string) error {
+	_, err := db.sqliteDb.Exec("UPDATE users SET email_verified = TRUE WHERE id = ?", userID)
+	if err != nil {
+		return err
+	}
+	db.sqliteDb.Exec("DELETE FROM email_verifications WHERE user_id = ?", userID)
+	return nil
+}
+
+func (db *SqliteDatabaseContext) IsEmailVerified(userID string) (bool, error) {
+	var verified bool
+	err := db.sqliteDb.QueryRow(
+		"SELECT email_verified FROM users WHERE id = ?", userID,
+	).Scan(&verified)
+	return verified, err
+}
+
 // ===== Google =====
 
 func (db *SqliteDatabaseContext) GetGoogleIDByUserID(userID string) (string, error) {

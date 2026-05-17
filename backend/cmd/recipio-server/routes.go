@@ -5,9 +5,11 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/jayvelayo/recipio/internal/authn"
 	rec "github.com/jayvelayo/recipio/internal/recipes"
+	"golang.org/x/time/rate"
 )
 
 // SetUpRoutes registers all API endpoints and static file serving
@@ -19,6 +21,7 @@ func SetUpRoutes(
 	allowedOrigins []string,
 	googleDB authn.GoogleAuthDatabase,
 	googleCfg authn.GoogleOAuthConfig,
+	emailSender authn.EmailSender,
 ) {
 	setupSPAHandler(mux)
 
@@ -29,6 +32,9 @@ func SetUpRoutes(
 		return withCORS(allowedOrigins, h)
 	}
 	preflight := cors(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+
+	registerLimiter := newRateLimiterStore(rate.Every(2*time.Minute), 5)
+	loginLimiter := newRateLimiterStore(rate.Every(30*time.Second), 10)
 
 	// Recipe endpoints
 	mux.Handle("POST /recipes", protected(handleDesignCreateRecipe(recipeDatabase)))
@@ -52,11 +58,13 @@ func SetUpRoutes(
 
 	// Auth endpoints
 	mux.Handle("GET /auth/me", cors(handleGetUserInfo(authDatabase)))
-	mux.Handle("POST /auth/register", cors(handlePasswordRegister(authDatabase)))
-	mux.Handle("POST /auth/login", cors(handlePasswordLogin(authDatabase)))
+	mux.Handle("POST /auth/register", cors(withRateLimit(registerLimiter)(handlePasswordRegister(authDatabase, emailSender))))
+	mux.Handle("POST /auth/login", cors(withRateLimit(loginLimiter)(handlePasswordLogin(authDatabase))))
+	mux.Handle("GET /auth/verify-email", cors(handleEmailVerification(authDatabase, emailSender.AppURL)))
 	mux.Handle("OPTIONS /auth/me", preflight)
 	mux.Handle("OPTIONS /auth/register", preflight)
 	mux.Handle("OPTIONS /auth/login", preflight)
+	mux.Handle("OPTIONS /auth/verify-email", preflight)
 
 	// Google OAuth endpoints
 	mux.Handle("GET /auth/google", cors(handleGoogleLogin(googleCfg)))

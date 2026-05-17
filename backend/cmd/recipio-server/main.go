@@ -56,9 +56,10 @@ func newServer(
 	googleDB authn.GoogleAuthDatabase,
 	googleCfg authn.GoogleOAuthConfig,
 	allowedOrigins []string,
+	emailSender authn.EmailSender,
 ) http.Handler {
 	mux := http.NewServeMux()
-	SetUpRoutes(mux, recipeDatabase, authDatabase, allowedOrigins, googleDB, googleCfg)
+	SetUpRoutes(mux, recipeDatabase, authDatabase, allowedOrigins, googleDB, googleCfg, emailSender)
 	return mux
 }
 
@@ -69,11 +70,19 @@ func main() {
 		log.Printf("Warning: Could not load .env file: %v", err)
 	}
 
+	appURL := os.Getenv("APP_URL")
+	if appURL == "" {
+		appURL = "http://localhost:4002"
+	}
+
 	allowedOrigins := []string{
 		"http://127.0.0.1:4002",
 		"https://127.0.0.1:4002",
 		"http://localhost:4002",
 		"https://localhost:4002",
+	}
+	if appURL != "http://localhost:4002" && appURL != "https://localhost:4002" {
+		allowedOrigins = append(allowedOrigins, appURL)
 	}
 
 	// Initialize database
@@ -113,12 +122,26 @@ func main() {
 		RedirectURI:  googleRedirectURI,
 	}
 
+	resendAPIKey := os.Getenv("RESEND_API_KEY")
+	if resendAPIKey == "" {
+		log.Printf("Warning: RESEND_API_KEY not set, email verification disabled (accounts auto-verified)")
+	}
+	emailFrom := os.Getenv("EMAIL_FROM")
+	if emailFrom == "" {
+		emailFrom = "Recipio <onboarding@resend.dev>"
+	}
+	emailSender := authn.EmailSender{
+		APIKey: resendAPIKey,
+		From:   emailFrom,
+		AppURL: appURL,
+	}
+
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "4002"
 	}
 
-	srv := withLogging(newServer(recipeDb, authDb, googleDb, googleCfg, allowedOrigins))
+	srv := withLogging(newServer(recipeDb, authDb, googleDb, googleCfg, allowedOrigins, emailSender))
 	log.Printf("Starting server on :%s...", port)
 	if err := http.ListenAndServe(":"+port, srv); err != nil {
 		log.Fatalf("Could not start server: %s\n", err)
