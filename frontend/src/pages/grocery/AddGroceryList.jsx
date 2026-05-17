@@ -47,15 +47,11 @@ export function AddGroceryList() {
           checked: false,
         }));
     } else if (creationType === 'from-mealplan' && mealPlanIngredients) {
-      items = mealPlanIngredients.map(ing => {
-        const parts = ing.split(' ');
-        if (parts.length > 1) {
-          const quantity = parts.slice(0, -1).join(' ');
-          const itemName = parts[parts.length - 1];
-          return { name: itemName, quantity, checked: false };
-        }
-        return { name: ing, quantity: '', checked: false };
-      });
+      items = mealPlanIngredients.map(ing => ({
+        name: ing.name,
+        quantity: ing.quantity || '',
+        checked: false,
+      }));
     }
 
     createMutation.mutate({
@@ -216,7 +212,9 @@ export function AddGroceryList() {
                   <p className="text-sm font-medium text-gray-900 mb-3">Items that will be added:</p>
                   <ul className="space-y-2">
                     {mealPlanIngredients.map((ing, index) => (
-                      <li key={index} className="text-sm text-gray-700">• {ing}</li>
+                      <li key={index} className="text-sm text-gray-700">
+                        • {[ing.quantity, ing.name].filter(Boolean).join(' ')}
+                      </li>
                     ))}
                   </ul>
                 </div>

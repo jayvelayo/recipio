@@ -28,7 +28,7 @@ export function getGroceryList(mealPlanId) {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       return res.json();
     })
-    .then((data) => data.ingredients || []);
+    .then((data) => (data.ingredients || []));
 }
 
 export function deleteMealPlan(mealPlanId) {

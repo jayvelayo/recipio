@@ -62,10 +62,10 @@ func (db *MockRecipeDatabase) GetAllMealPlans(userID string) ([]MealPlanSummary,
 	return db.mealPlans, nil
 }
 
-func (db *MockRecipeDatabase) GetGroceryList(mealPlanID string) ([]string, error) {
+func (db *MockRecipeDatabase) GetGroceryList(mealPlanID string) ([]Ingredient, error) {
 	for _, plan := range db.mealPlans {
 		if plan.ID == mealPlanID {
-			return []string{"mock ingredient"}, nil
+			return []Ingredient{{Name: "mock ingredient", Quantity: "1"}}, nil
 		}
 	}
 	return nil, fmt.Errorf("meal plan not found")

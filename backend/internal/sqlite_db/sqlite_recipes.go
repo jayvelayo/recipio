@@ -357,7 +357,7 @@ func (ctx *SqliteDatabaseContext) GetAllMealPlans(userID string) ([]rec.MealPlan
 	return plans, nil
 }
 
-func (ctx *SqliteDatabaseContext) GetGroceryList(mealPlanID string) ([]string, error) {
+func (ctx *SqliteDatabaseContext) GetGroceryList(mealPlanID string) ([]rec.Ingredient, error) {
 	db := ctx.sqliteDb
 	planID, err := strconv.ParseInt(mealPlanID, 10, 64)
 	if err != nil || planID < 1 {
@@ -379,26 +379,25 @@ func (ctx *SqliteDatabaseContext) GetGroceryList(mealPlanID string) ([]string, e
 		recipeIDs = append(recipeIDs, rid)
 	}
 
-	var ingredients []string
+	var ingredients []rec.Ingredient
 	for _, rid := range recipeIDs {
 		ingRows, err := db.Query("SELECT name, quantity FROM ingredients WHERE recipe_id = ?", rid)
 		if err != nil {
 			return nil, err
 		}
 		for ingRows.Next() {
-			var name, quantity string
-			if err := ingRows.Scan(&name, &quantity); err != nil {
+			var ing rec.Ingredient
+			if err := ingRows.Scan(&ing.Name, &ing.Quantity); err != nil {
 				ingRows.Close()
 				return nil, err
 			}
-			s := strings.TrimSpace(quantity + " " + name)
-			if s != "" {
-				ingredients = append(ingredients, s)
+			if ing.Name != "" {
+				ingredients = append(ingredients, ing)
 			}
 		}
 		ingRows.Close()
 	}
-	return ingredients, nil
+	return rec.ConsolidateIngredients(ingredients), nil
 }
 
 func (ctx *SqliteDatabaseContext) DeleteMealPlan(mealPlanID string) error {
