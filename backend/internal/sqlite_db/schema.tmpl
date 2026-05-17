@@ -41,3 +41,32 @@ CREATE TABLE IF NOT EXISTS grocery_list_items (
     checked BOOLEAN DEFAULT FALSE,
     FOREIGN KEY (grocery_list_id) REFERENCES grocery_lists(id)
 );
+
+CREATE TABLE IF NOT EXISTS users (
+    id TEXT PRIMARY KEY,
+    email TEXT NOT NULL UNIQUE,
+    name TEXT,
+    created TIMESTAMP NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS sessions (
+    token TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    expires TIMESTAMP NOT NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+CREATE TABLE IF NOT EXISTS credentials (
+    user_id TEXT NOT NULL,
+    password TEXT NOT NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+CREATE TABLE IF NOT EXISTS oauth (
+    user_id TEXT NOT NULL,
+    provider TEXT NOT NULL,
+    sub TEXT NOT NULL,
+    PRIMARY KEY (provider, sub),
+    UNIQUE (user_id, provider),
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
