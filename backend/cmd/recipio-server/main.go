@@ -89,7 +89,7 @@ func main() {
 		log.Fatalf("unable to init db: %v", err)
 	}
 	defer recipeDb.CloseDb()
-
+	// TODO: use Redis/PostgreDB for auth database as next learning step
 	authDb, ok := recipeDb.(authn.PasswordDatabase)
 	if !ok {
 		log.Fatal("database does not implement authn.PasswordDatabase")

@@ -1,10 +1,17 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net/http"
 	"strings"
+
+	"github.com/jayvelayo/recipio/internal/authn"
 )
+
+type contextKey string
+
+const userIDKey contextKey = "userID"
 
 type statusRecorder struct {
 	http.ResponseWriter
@@ -31,6 +38,33 @@ func withLogging(next http.Handler) http.Handler {
 		if rec.status >= 400 {
 			log.Printf("ERROR %d %s %s: %s", rec.status, r.Method, r.URL.Path, strings.TrimSpace(rec.body.String()))
 		}
+	})
+}
+
+func withAuth(authDB authn.AuthDatabase, next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Allow pre-injected userID (e.g. in tests)
+		if _, ok := r.Context().Value(userIDKey).(string); ok {
+			next.ServeHTTP(w, r)
+			return
+		}
+		if authDB == nil {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+		authHeader := r.Header.Get("Authorization")
+		if !strings.HasPrefix(authHeader, "Bearer ") {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+		token := strings.TrimPrefix(authHeader, "Bearer ")
+		userID, err := authDB.GetUserIDBySessionToken(token)
+		if err != nil {
+			http.Error(w, "Invalid or expired session", http.StatusUnauthorized)
+			return
+		}
+		ctx := context.WithValue(r.Context(), userIDKey, userID)
+		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
 

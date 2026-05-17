@@ -9,9 +9,7 @@ import (
 	rec "github.com/jayvelayo/recipio/internal/recipes"
 )
 
-const defaultUserID = 0
-
-func (iface *SqliteDatabaseContext) CreateRecipe(newRecipe rec.Recipe) (uint64, error) {
+func (iface *SqliteDatabaseContext) CreateRecipe(userID string, newRecipe rec.Recipe) (uint64, error) {
 	db := iface.sqliteDb
 	tx, err := db.Begin()
 	if err != nil {
@@ -20,7 +18,7 @@ func (iface *SqliteDatabaseContext) CreateRecipe(newRecipe rec.Recipe) (uint64, 
 	defer tx.Rollback()
 
 	instructions := encodeInstructionList(newRecipe.Instructions)
-	res, err := tx.Exec("INSERT INTO recipes (name, instruction) VALUES (?, ?)", newRecipe.Name, instructions)
+	res, err := tx.Exec("INSERT INTO recipes (user_id, name, instruction) VALUES (?, ?, ?)", userID, newRecipe.Name, instructions)
 	if err != nil {
 		return 0, fmt.Errorf("failed to insert recipe: %w", err)
 	}
@@ -157,14 +155,15 @@ func (ctx *SqliteDatabaseContext) DeleteRecipe(id int) error {
 	return nil
 }
 
-func (ctx *SqliteDatabaseContext) GetAllRecipes() (rec.Recipes, error) {
+func (ctx *SqliteDatabaseContext) GetAllRecipes(userID string) (rec.Recipes, error) {
 	db := ctx.sqliteDb
 
 	rows, err := db.Query(`
 		SELECT r.id, r.name, r.instruction, i.name, i.quantity
 		FROM recipes r
 		LEFT JOIN ingredients i ON i.recipe_id = r.id
-		ORDER BY r.id`)
+		WHERE r.user_id = ?
+		ORDER BY r.id`, userID)
 	if err != nil {
 		return rec.Recipes{}, err
 	}
@@ -206,7 +205,7 @@ func (ctx *SqliteDatabaseContext) AddRecipeToMealPlan(id int) error {
 	return nil
 }
 
-func (ctx *SqliteDatabaseContext) CreateMealPlan(recipeIDs []string) (string, error) {
+func (ctx *SqliteDatabaseContext) CreateMealPlan(userID string, recipeIDs []string) (string, error) {
 	db := ctx.sqliteDb
 	tx, err := db.Begin()
 	if err != nil {
@@ -214,7 +213,7 @@ func (ctx *SqliteDatabaseContext) CreateMealPlan(recipeIDs []string) (string, er
 	}
 	defer tx.Rollback()
 
-	res, err := tx.Exec("INSERT INTO meal_plan (user_id) VALUES (?)", defaultUserID)
+	res, err := tx.Exec("INSERT INTO meal_plan (user_id) VALUES (?)", userID)
 	if err != nil {
 		return "", fmt.Errorf("failed to insert meal plan: %w", err)
 	}
@@ -245,9 +244,9 @@ func (ctx *SqliteDatabaseContext) CreateMealPlan(recipeIDs []string) (string, er
 	return strconv.FormatInt(mealPlanID, 10), nil
 }
 
-func (ctx *SqliteDatabaseContext) GetAllMealPlans() ([]rec.MealPlanSummary, error) {
+func (ctx *SqliteDatabaseContext) GetAllMealPlans(userID string) ([]rec.MealPlanSummary, error) {
 	db := ctx.sqliteDb
-	planRows, err := db.Query("SELECT id FROM meal_plan ORDER BY id")
+	planRows, err := db.Query("SELECT id FROM meal_plan WHERE user_id = ? ORDER BY id", userID)
 	if err != nil {
 		return nil, err
 	}
@@ -355,7 +354,7 @@ func (ctx *SqliteDatabaseContext) DeleteMealPlan(mealPlanID string) error {
 	return nil
 }
 
-func (ctx *SqliteDatabaseContext) CreateGroceryList(name string, items []rec.GroceryListItem, mealPlanID *string) (string, error) {
+func (ctx *SqliteDatabaseContext) CreateGroceryList(userID string, name string, items []rec.GroceryListItem, mealPlanID *string) (string, error) {
 	db := ctx.sqliteDb
 	tx, err := db.Begin()
 	if err != nil {
@@ -369,12 +368,12 @@ func (ctx *SqliteDatabaseContext) CreateGroceryList(name string, items []rec.Gro
 		if err != nil {
 			return "", fmt.Errorf("invalid meal plan id: %s", *mealPlanID)
 		}
-		res, err = tx.Exec("INSERT INTO grocery_lists (name, meal_plan_id) VALUES (?, ?)", name, planID)
+		res, err = tx.Exec("INSERT INTO grocery_lists (user_id, name, meal_plan_id) VALUES (?, ?, ?)", userID, name, planID)
 		if err != nil {
 			return "", fmt.Errorf("failed to insert grocery list: %w", err)
 		}
 	} else {
-		res, err = tx.Exec("INSERT INTO grocery_lists (name, meal_plan_id) VALUES (?, ?)", name, nil)
+		res, err = tx.Exec("INSERT INTO grocery_lists (user_id, name, meal_plan_id) VALUES (?, ?, ?)", userID, name, nil)
 		if err != nil {
 			return "", fmt.Errorf("failed to insert grocery list: %w", err)
 		}
@@ -403,9 +402,9 @@ func (ctx *SqliteDatabaseContext) CreateGroceryList(name string, items []rec.Gro
 	return strconv.FormatInt(listID, 10), nil
 }
 
-func (ctx *SqliteDatabaseContext) GetAllGroceryLists() ([]rec.GroceryList, error) {
+func (ctx *SqliteDatabaseContext) GetAllGroceryLists(userID string) ([]rec.GroceryList, error) {
 	db := ctx.sqliteDb
-	rows, err := db.Query("SELECT id, name, meal_plan_id FROM grocery_lists ORDER BY id")
+	rows, err := db.Query("SELECT id, name, meal_plan_id FROM grocery_lists WHERE user_id = ? ORDER BY id", userID)
 	if err != nil {
 		return nil, err
 	}

@@ -20,43 +20,51 @@ func SetUpRoutes(
 ) {
 	setupSPAHandler(mux)
 
+	protected := func(h http.Handler) http.Handler {
+		return withCORS(allowedOrigins, withAuth(authDatabase, h))
+	}
+	cors := func(h http.Handler) http.Handler {
+		return withCORS(allowedOrigins, h)
+	}
+	preflight := cors(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+
 	// Recipe endpoints
-	mux.Handle("POST /recipes", withCORS(allowedOrigins, handleDesignCreateRecipe(recipeDatabase)))
-	mux.Handle("GET /recipes/{id}", withCORS(allowedOrigins, handleDesignGetRecipe(recipeDatabase)))
-	mux.Handle("GET /recipes", withCORS(allowedOrigins, handleDesignGetAllRecipes(recipeDatabase)))
-	mux.Handle("PUT /recipes/{id}", withCORS(allowedOrigins, handleDesignUpdateRecipe(recipeDatabase)))
-	mux.Handle("DELETE /recipes/{id}", withCORS(allowedOrigins, handleDesignDeleteRecipe(recipeDatabase)))
-	mux.Handle("OPTIONS /recipes", withCORS(allowedOrigins, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})))
-	mux.Handle("OPTIONS /recipes/{id}", withCORS(allowedOrigins, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})))
+	mux.Handle("POST /recipes", protected(handleDesignCreateRecipe(recipeDatabase)))
+	mux.Handle("GET /recipes/{id}", protected(handleDesignGetRecipe(recipeDatabase)))
+	mux.Handle("GET /recipes", protected(handleDesignGetAllRecipes(recipeDatabase)))
+	mux.Handle("PUT /recipes/{id}", protected(handleDesignUpdateRecipe(recipeDatabase)))
+	mux.Handle("DELETE /recipes/{id}", protected(handleDesignDeleteRecipe(recipeDatabase)))
+	mux.Handle("OPTIONS /recipes", preflight)
+	mux.Handle("OPTIONS /recipes/{id}", preflight)
 
 	// AI parsing endpoint
-	mux.Handle("POST /parse-recipe", withCORS(allowedOrigins, handleDesignParseRecipe(rec.NewAIParser(os.Getenv("GROQ_API_KEY")))))
-	mux.Handle("OPTIONS /parse-recipe", withCORS(allowedOrigins, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})))
+	mux.Handle("POST /parse-recipe", cors(handleDesignParseRecipe(rec.NewAIParser(os.Getenv("GROQ_API_KEY")))))
+	mux.Handle("OPTIONS /parse-recipe", preflight)
 
 	// Meal plan endpoints
-	mux.Handle("GET /meal-plans", withCORS(allowedOrigins, handleDesignGetAllMealPlans(recipeDatabase)))
-	mux.Handle("POST /meal-plans", withCORS(allowedOrigins, handleDesignCreateMealPlan(recipeDatabase)))
-	mux.Handle("DELETE /meal-plans/{meal_plan_id}", withCORS(allowedOrigins, handleDesignDeleteMealPlan(recipeDatabase)))
-	mux.Handle("OPTIONS /meal-plans", withCORS(allowedOrigins, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})))
-	mux.Handle("OPTIONS /meal-plans/{meal_plan_id}", withCORS(allowedOrigins, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})))
+	mux.Handle("GET /meal-plans", protected(handleDesignGetAllMealPlans(recipeDatabase)))
+	mux.Handle("POST /meal-plans", protected(handleDesignCreateMealPlan(recipeDatabase)))
+	mux.Handle("DELETE /meal-plans/{meal_plan_id}", protected(handleDesignDeleteMealPlan(recipeDatabase)))
+	mux.Handle("OPTIONS /meal-plans", preflight)
+	mux.Handle("OPTIONS /meal-plans/{meal_plan_id}", preflight)
 
 	// Auth endpoints
-	mux.Handle("GET /auth/me", withCORS(allowedOrigins, handleGetUserInfo(authDatabase)))
-	mux.Handle("POST /auth/register", withCORS(allowedOrigins, handlePasswordRegister(authDatabase)))
-	mux.Handle("POST /auth/login", withCORS(allowedOrigins, handlePasswordLogin(authDatabase)))
-	mux.Handle("OPTIONS /auth/me", withCORS(allowedOrigins, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})))
-	mux.Handle("OPTIONS /auth/register", withCORS(allowedOrigins, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})))
-	mux.Handle("OPTIONS /auth/login", withCORS(allowedOrigins, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})))
+	mux.Handle("GET /auth/me", cors(handleGetUserInfo(authDatabase)))
+	mux.Handle("POST /auth/register", cors(handlePasswordRegister(authDatabase)))
+	mux.Handle("POST /auth/login", cors(handlePasswordLogin(authDatabase)))
+	mux.Handle("OPTIONS /auth/me", preflight)
+	mux.Handle("OPTIONS /auth/register", preflight)
+	mux.Handle("OPTIONS /auth/login", preflight)
 
 	// Grocery list endpoints
-	mux.Handle("GET /grocery-list/{meal_plan_id}", withCORS(allowedOrigins, handleDesignGetGroceryList(recipeDatabase)))
-	mux.Handle("POST /grocery-lists", withCORS(allowedOrigins, handleDesignCreateGroceryList(recipeDatabase)))
-	mux.Handle("GET /grocery-lists", withCORS(allowedOrigins, handleDesignGetAllGroceryLists(recipeDatabase)))
-	mux.Handle("GET /grocery-lists/{id}", withCORS(allowedOrigins, handleDesignGetGroceryListByID(recipeDatabase)))
-	mux.Handle("PUT /grocery-lists/{id}", withCORS(allowedOrigins, handleDesignUpdateGroceryList(recipeDatabase)))
-	mux.Handle("DELETE /grocery-lists/{id}", withCORS(allowedOrigins, handleDesignDeleteGroceryList(recipeDatabase)))
-	mux.Handle("OPTIONS /grocery-lists", withCORS(allowedOrigins, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})))
-	mux.Handle("OPTIONS /grocery-lists/{id}", withCORS(allowedOrigins, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})))
+	mux.Handle("GET /grocery-list/{meal_plan_id}", protected(handleDesignGetGroceryList(recipeDatabase)))
+	mux.Handle("POST /grocery-lists", protected(handleDesignCreateGroceryList(recipeDatabase)))
+	mux.Handle("GET /grocery-lists", protected(handleDesignGetAllGroceryLists(recipeDatabase)))
+	mux.Handle("GET /grocery-lists/{id}", protected(handleDesignGetGroceryListByID(recipeDatabase)))
+	mux.Handle("PUT /grocery-lists/{id}", protected(handleDesignUpdateGroceryList(recipeDatabase)))
+	mux.Handle("DELETE /grocery-lists/{id}", protected(handleDesignDeleteGroceryList(recipeDatabase)))
+	mux.Handle("OPTIONS /grocery-lists", preflight)
+	mux.Handle("OPTIONS /grocery-lists/{id}", preflight)
 }
 
 // setupSPAHandler configures serving the frontend SPA

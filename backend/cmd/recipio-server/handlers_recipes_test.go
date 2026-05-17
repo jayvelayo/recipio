@@ -47,8 +47,8 @@ func TestCreateRecipeHandler(t *testing.T) {
 
 func TestGetRecipeHandler(t *testing.T) {
 	mockdb := rec.MockRecipeDatabase{}
-	mockdb.CreateRecipe(rec.Recipe{Name: "Test Recipe 1", Ingredients: []rec.Ingredient{{Name: "Salt", Quantity: "1 tsp"}}, Instructions: rec.InstructionList{"Mix"}})
-	mockdb.CreateRecipe(rec.Recipe{Name: "Test Recipe 2", Ingredients: []rec.Ingredient{{Name: "Pepper", Quantity: "1 tsp"}}, Instructions: rec.InstructionList{"Mix"}})
+	mockdb.CreateRecipe(testUserID, rec.Recipe{Name: "Test Recipe 1", Ingredients: []rec.Ingredient{{Name: "Salt", Quantity: "1 tsp"}}, Instructions: rec.InstructionList{"Mix"}})
+	mockdb.CreateRecipe(testUserID, rec.Recipe{Name: "Test Recipe 2", Ingredients: []rec.Ingredient{{Name: "Pepper", Quantity: "1 tsp"}}, Instructions: rec.InstructionList{"Mix"}})
 	handler := createFakeServer(&mockdb)
 
 	t.Run("Fetches a recipe by ID", func(t *testing.T) {
@@ -81,7 +81,7 @@ func TestGetRecipeHandler(t *testing.T) {
 
 func TestUpdateRecipeHandler(t *testing.T) {
 	mockdb := rec.MockRecipeDatabase{}
-	mockdb.CreateRecipe(rec.Recipe{
+	mockdb.CreateRecipe(testUserID, rec.Recipe{
 		Name:         "Original Recipe",
 		Ingredients:  []rec.Ingredient{{Name: "Flour", Quantity: "2 cups"}},
 		Instructions: rec.InstructionList{"Mix", "Bake"},
@@ -138,7 +138,7 @@ func TestUpdateRecipeHandler(t *testing.T) {
 
 func TestDeleteRecipeHandler(t *testing.T) {
 	mockdb := rec.MockRecipeDatabase{}
-	mockdb.CreateRecipe(rec.Recipe{
+	mockdb.CreateRecipe(testUserID, rec.Recipe{
 		Name:         "Recipe to Delete",
 		Ingredients:  []rec.Ingredient{{Name: "Salt", Quantity: "1 tsp"}},
 		Instructions: rec.InstructionList{"Sprinkle"},

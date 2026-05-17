@@ -25,7 +25,7 @@ func TestCreateRecipe(t *testing.T) {
 			Instructions: rec.InstructionList{"Boil water", "Cook pasta"},
 			Ingredients:  []rec.Ingredient{{Name: "pasta", Quantity: "200g"}},
 		}
-		id, err := db.CreateRecipe(recipe)
+		id, err := db.CreateRecipe("test-user", recipe)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -36,8 +36,8 @@ func TestCreateRecipe(t *testing.T) {
 
 	t.Run("IDs increment for successive recipes", func(t *testing.T) {
 		db := initRecipeDB(t)
-		id1, _ := db.CreateRecipe(rec.Recipe{Name: "Recipe A", Instructions: rec.InstructionList{"Step 1"}})
-		id2, _ := db.CreateRecipe(rec.Recipe{Name: "Recipe B", Instructions: rec.InstructionList{"Step 1"}})
+		id1, _ := db.CreateRecipe("test-user", rec.Recipe{Name: "Recipe A", Instructions: rec.InstructionList{"Step 1"}})
+		id2, _ := db.CreateRecipe("test-user", rec.Recipe{Name: "Recipe B", Instructions: rec.InstructionList{"Step 1"}})
 		if id2 <= id1 {
 			t.Errorf("expected id2 (%d) > id1 (%d)", id2, id1)
 		}
@@ -50,7 +50,7 @@ func TestCreateRecipe(t *testing.T) {
 			Instructions: rec.InstructionList{"Crack eggs"},
 			Ingredients:  []rec.Ingredient{{Name: "", Quantity: "2"}},
 		}
-		_, err := db.CreateRecipe(recipe)
+		_, err := db.CreateRecipe("test-user", recipe)
 		if err == nil {
 			t.Error("expected error for empty ingredient name, got nil")
 		}
@@ -68,7 +68,7 @@ func TestGetRecipe(t *testing.T) {
 				{Name: "butter", Quantity: "1 tbsp"},
 			},
 		}
-		id, err := db.CreateRecipe(recipe)
+		id, err := db.CreateRecipe("test-user", recipe)
 		if err != nil {
 			t.Fatalf("failed to create recipe: %v", err)
 		}
@@ -100,7 +100,7 @@ func TestGetRecipe(t *testing.T) {
 func TestGetAllRecipes(t *testing.T) {
 	t.Run("returns empty slice when no recipes exist", func(t *testing.T) {
 		db := initRecipeDB(t)
-		recipes, err := db.GetAllRecipes()
+		recipes, err := db.GetAllRecipes("test-user")
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -111,11 +111,11 @@ func TestGetAllRecipes(t *testing.T) {
 
 	t.Run("returns all created recipes", func(t *testing.T) {
 		db := initRecipeDB(t)
-		db.CreateRecipe(rec.Recipe{Name: "Recipe 1", Instructions: rec.InstructionList{"Step 1"}})
-		db.CreateRecipe(rec.Recipe{Name: "Recipe 2", Instructions: rec.InstructionList{"Step 1"}})
-		db.CreateRecipe(rec.Recipe{Name: "Recipe 3", Instructions: rec.InstructionList{"Step 1"}})
+		db.CreateRecipe("test-user", rec.Recipe{Name: "Recipe 1", Instructions: rec.InstructionList{"Step 1"}})
+		db.CreateRecipe("test-user", rec.Recipe{Name: "Recipe 2", Instructions: rec.InstructionList{"Step 1"}})
+		db.CreateRecipe("test-user", rec.Recipe{Name: "Recipe 3", Instructions: rec.InstructionList{"Step 1"}})
 
-		recipes, err := db.GetAllRecipes()
+		recipes, err := db.GetAllRecipes("test-user")
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -128,7 +128,7 @@ func TestGetAllRecipes(t *testing.T) {
 func TestUpdateRecipe(t *testing.T) {
 	t.Run("updates name, instructions, and ingredients", func(t *testing.T) {
 		db := initRecipeDB(t)
-		id, err := db.CreateRecipe(rec.Recipe{
+		id, err := db.CreateRecipe("test-user", rec.Recipe{
 			Name:         "Old Name",
 			Instructions: rec.InstructionList{"Old step"},
 			Ingredients:  []rec.Ingredient{{Name: "old ingredient", Quantity: "1"}},
@@ -173,7 +173,7 @@ func TestUpdateRecipe(t *testing.T) {
 func TestDeleteRecipe(t *testing.T) {
 	t.Run("deletes an existing recipe", func(t *testing.T) {
 		db := initRecipeDB(t)
-		id, err := db.CreateRecipe(rec.Recipe{
+		id, err := db.CreateRecipe("test-user", rec.Recipe{
 			Name:         "To Delete",
 			Instructions: rec.InstructionList{"Step 1"},
 			Ingredients:  []rec.Ingredient{{Name: "sugar", Quantity: "1 cup"}},

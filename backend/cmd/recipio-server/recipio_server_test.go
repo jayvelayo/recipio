@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -31,8 +32,13 @@ func getResponseBody(r *httptest.ResponseRecorder) string {
 	return string(bodybytes)
 }
 
+const testUserID = "test-user-id"
+
 func createFakeServer(db rec.RecipeDatabase) http.Handler {
 	mux := http.NewServeMux()
 	SetUpRoutes(mux, db, nil, []string{})
-	return mux
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := context.WithValue(r.Context(), userIDKey, testUserID)
+		mux.ServeHTTP(w, r.WithContext(ctx))
+	})
 }

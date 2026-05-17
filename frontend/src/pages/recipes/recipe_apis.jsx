@@ -1,5 +1,10 @@
+function authHeaders() {
+  const session = JSON.parse(localStorage.getItem('session'));
+  return session?.token ? { Authorization: `Bearer ${session.token}` } : {};
+}
+
 export function getRecipes() {
-  return fetch('/recipes')
+  return fetch('/recipes', { headers: authHeaders() })
     .then(res => {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       return res.json();
@@ -7,7 +12,7 @@ export function getRecipes() {
 }
 
 export function getRecipeId(id) {
-  return fetch(`/recipes/${id}`)
+  return fetch(`/recipes/${id}`, { headers: authHeaders() })
     .then(res => {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       return res.json();
@@ -22,7 +27,7 @@ export function createRecipe(newRecipe) {
   };
   return fetch('/recipes', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
     body: JSON.stringify(body),
   }).then(res => {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -33,7 +38,7 @@ export function createRecipe(newRecipe) {
 export function parseRecipe(rawRecipeText) {
   return fetch('/parse-recipe', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
     body: JSON.stringify({ raw_recipe_text: rawRecipeText }),
   }).then(res => {
     if (res.status === 429) throw new Error('RATE_LIMIT');
@@ -51,7 +56,7 @@ export function updateRecipe({ id, recipe }) {
   };
   return fetch(`/recipes/${id}`, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
     body: JSON.stringify(body),
   }).then(res => {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -59,7 +64,7 @@ export function updateRecipe({ id, recipe }) {
 }
 
 export function deleteRecipe(id) {
-  return fetch(`/recipes/${id}`, { method: 'DELETE' })
+  return fetch(`/recipes/${id}`, { method: 'DELETE', headers: authHeaders() })
     .then(res => {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
     });

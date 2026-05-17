@@ -10,7 +10,7 @@ import (
 
 func TestGetGroceryListForMealPlanHandler(t *testing.T) {
 	mockdb := rec.MockRecipeDatabase{}
-	mockdb.CreateMealPlan([]string{"1", "2"})
+	mockdb.CreateMealPlan(testUserID, []string{"1", "2"})
 	handler := createFakeServer(&mockdb)
 
 	t.Run("Returns ingredients for an existing meal plan", func(t *testing.T) {
@@ -70,7 +70,7 @@ func TestCreateGroceryListHandler(t *testing.T) {
 
 func TestGetAllGroceryListsHandler(t *testing.T) {
 	mockdb := rec.MockRecipeDatabase{}
-	mockdb.CreateGroceryList("List 1", []rec.GroceryListItem{{Name: "Eggs", Quantity: "12"}}, nil)
+	mockdb.CreateGroceryList(testUserID, "List 1", []rec.GroceryListItem{{Name: "Eggs", Quantity: "12"}}, nil)
 	handler := createFakeServer(&mockdb)
 
 	t.Run("Returns 200 with all grocery lists", func(t *testing.T) {
@@ -85,7 +85,7 @@ func TestGetAllGroceryListsHandler(t *testing.T) {
 
 func TestGetGroceryListByIDHandler(t *testing.T) {
 	mockdb := rec.MockRecipeDatabase{}
-	mockdb.CreateGroceryList("My List", []rec.GroceryListItem{{Name: "Milk", Quantity: "1 gallon"}}, nil)
+	mockdb.CreateGroceryList(testUserID, "My List", []rec.GroceryListItem{{Name: "Milk", Quantity: "1 gallon"}}, nil)
 	handler := createFakeServer(&mockdb)
 
 	t.Run("Returns 200 for existing grocery list", func(t *testing.T) {
@@ -109,7 +109,7 @@ func TestGetGroceryListByIDHandler(t *testing.T) {
 
 func TestUpdateGroceryListHandler(t *testing.T) {
 	mockdb := rec.MockRecipeDatabase{}
-	mockdb.CreateGroceryList("List to Update", []rec.GroceryListItem{{Name: "Bread", Quantity: "1 loaf"}}, nil)
+	mockdb.CreateGroceryList(testUserID, "List to Update", []rec.GroceryListItem{{Name: "Bread", Quantity: "1 loaf"}}, nil)
 	handler := createFakeServer(&mockdb)
 
 	t.Run("Returns 415 without JSON content-type", func(t *testing.T) {
@@ -144,7 +144,7 @@ func TestUpdateGroceryListHandler(t *testing.T) {
 
 func TestDeleteGroceryListHandler(t *testing.T) {
 	mockdb := rec.MockRecipeDatabase{}
-	mockdb.CreateGroceryList("List to Delete", []rec.GroceryListItem{{Name: "Cheese", Quantity: "500g"}}, nil)
+	mockdb.CreateGroceryList(testUserID, "List to Delete", []rec.GroceryListItem{{Name: "Cheese", Quantity: "500g"}}, nil)
 	handler := createFakeServer(&mockdb)
 
 	t.Run("Returns 404 for non-existent grocery list", func(t *testing.T) {

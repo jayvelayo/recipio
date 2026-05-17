@@ -86,7 +86,7 @@ function RecipeListRows({recipes}) {
     setRecipeItems(results);
   }, [searchQuery, recipes]);
 
-  if (recipes === undefined || recipes.length === 0) {
+  if (!recipes || recipes.length === 0) {
     return (
       <div className="text-center py-12">
         <p className="text-gray-500 mb-4">No recipes found yet. Create your first recipe!</p>

@@ -46,7 +46,7 @@ func TestCreateMealPlanHandler(t *testing.T) {
 
 func TestDeleteMealPlanHandler(t *testing.T) {
 	mockdb := rec.MockRecipeDatabase{}
-	mockdb.CreateMealPlan([]string{"1", "2"})
+	mockdb.CreateMealPlan(testUserID, []string{"1", "2"})
 	handler := createFakeServer(&mockdb)
 
 	t.Run("Returns 404 for non-existent meal plan", func(t *testing.T) {

@@ -9,7 +9,8 @@ import (
 
 func handleDesignGetAllMealPlans(recipeDb rec.RecipeDatabase) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		plans, err := recipeDb.GetAllMealPlans()
+		userID := r.Context().Value(userIDKey).(string)
+		plans, err := recipeDb.GetAllMealPlans(userID)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -29,7 +30,8 @@ func handleDesignCreateMealPlan(recipeDb rec.RecipeDatabase) http.Handler {
 			http.Error(w, "Invalid JSON body", http.StatusBadRequest)
 			return
 		}
-		mealPlanID, err := recipeDb.CreateMealPlan(body.Recipes)
+		userID := r.Context().Value(userIDKey).(string)
+		mealPlanID, err := recipeDb.CreateMealPlan(userID, body.Recipes)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return

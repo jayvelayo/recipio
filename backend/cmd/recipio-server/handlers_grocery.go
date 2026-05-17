@@ -38,7 +38,8 @@ func handleDesignCreateGroceryList(recipeDb rec.RecipeDatabase) http.Handler {
 			http.Error(w, "Name is required", http.StatusBadRequest)
 			return
 		}
-		id, err := recipeDb.CreateGroceryList(body.Name, body.Items, body.MealPlanID)
+		userID := r.Context().Value(userIDKey).(string)
+		id, err := recipeDb.CreateGroceryList(userID, body.Name, body.Items, body.MealPlanID)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
@@ -49,7 +50,8 @@ func handleDesignCreateGroceryList(recipeDb rec.RecipeDatabase) http.Handler {
 
 func handleDesignGetAllGroceryLists(recipeDb rec.RecipeDatabase) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		lists, err := recipeDb.GetAllGroceryLists()
+		userID := r.Context().Value(userIDKey).(string)
+		lists, err := recipeDb.GetAllGroceryLists(userID)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return

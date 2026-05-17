@@ -1,5 +1,10 @@
+function authHeaders() {
+  const session = JSON.parse(localStorage.getItem('session'));
+  return session?.token ? { Authorization: `Bearer ${session.token}` } : {};
+}
+
 export function getMealPlans() {
-  return fetch('/meal-plans')
+  return fetch('/meal-plans', { headers: authHeaders() })
     .then((res) => {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       return res.json();
@@ -9,7 +14,7 @@ export function getMealPlans() {
 export function createMealPlan(recipeIds) {
   return fetch('/meal-plans', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
     body: JSON.stringify({ recipes: recipeIds }),
   }).then((res) => {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -18,7 +23,7 @@ export function createMealPlan(recipeIds) {
 }
 
 export function getGroceryList(mealPlanId) {
-  return fetch(`/grocery-list/${mealPlanId}`)
+  return fetch(`/grocery-list/${mealPlanId}`, { headers: authHeaders() })
     .then((res) => {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       return res.json();
@@ -27,7 +32,7 @@ export function getGroceryList(mealPlanId) {
 }
 
 export function deleteMealPlan(mealPlanId) {
-  return fetch(`/meal-plans/${mealPlanId}`, { method: 'DELETE' })
+  return fetch(`/meal-plans/${mealPlanId}`, { method: 'DELETE', headers: authHeaders() })
     .then((res) => {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
     });

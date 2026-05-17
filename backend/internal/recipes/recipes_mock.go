@@ -14,7 +14,7 @@ type MockRecipeDatabase struct {
 	groceryCount  int
 }
 
-func (db *MockRecipeDatabase) CreateRecipe(newRecipe Recipe) (uint64, error) {
+func (db *MockRecipeDatabase) CreateRecipe(userID string, newRecipe Recipe) (uint64, error) {
 	if newRecipe.Name == "" {
 		return 0, fmt.Errorf("recipe name cannot be empty")
 	}
@@ -40,7 +40,7 @@ func (db *MockRecipeDatabase) GetRecipe(id int) (Recipe, error) {
 	return db.recipes[id-1], nil
 }
 
-func (db *MockRecipeDatabase) GetAllRecipes() (Recipes, error) {
+func (db *MockRecipeDatabase) GetAllRecipes(userID string) (Recipes, error) {
 	return db.recipes, nil
 }
 
@@ -48,14 +48,14 @@ func (db *MockRecipeDatabase) AddRecipeToMealPlan(id int) error {
 	return nil
 }
 
-func (db *MockRecipeDatabase) CreateMealPlan(recipeIDs []string) (string, error) {
+func (db *MockRecipeDatabase) CreateMealPlan(userID string, recipeIDs []string) (string, error) {
 	db.mealPlanCount++
 	id := strconv.Itoa(db.mealPlanCount)
 	db.mealPlans = append(db.mealPlans, MealPlanSummary{ID: id, RecipeNames: recipeIDs})
 	return id, nil
 }
 
-func (db *MockRecipeDatabase) GetAllMealPlans() ([]MealPlanSummary, error) {
+func (db *MockRecipeDatabase) GetAllMealPlans(userID string) ([]MealPlanSummary, error) {
 	return db.mealPlans, nil
 }
 
@@ -78,14 +78,14 @@ func (db *MockRecipeDatabase) DeleteMealPlan(mealPlanID string) error {
 	return fmt.Errorf("meal plan not found")
 }
 
-func (db *MockRecipeDatabase) CreateGroceryList(name string, items []GroceryListItem, mealPlanID *string) (string, error) {
+func (db *MockRecipeDatabase) CreateGroceryList(userID string, name string, items []GroceryListItem, mealPlanID *string) (string, error) {
 	db.groceryCount++
 	id := strconv.Itoa(db.groceryCount)
 	db.groceryLists = append(db.groceryLists, GroceryList{ID: id, Name: name, Items: items, MealPlanID: mealPlanID})
 	return id, nil
 }
 
-func (db *MockRecipeDatabase) GetAllGroceryLists() ([]GroceryList, error) {
+func (db *MockRecipeDatabase) GetAllGroceryLists(userID string) ([]GroceryList, error) {
 	return db.groceryLists, nil
 }
 

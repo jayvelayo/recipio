@@ -38,7 +38,8 @@ func handleDesignCreateRecipe(recipeDb rec.RecipeDatabase) http.Handler {
 			http.Error(w, "Missing required fields: name, ingredients, instructions", http.StatusBadRequest)
 			return
 		}
-		recipeID, err := recipeDb.CreateRecipe(recipe)
+		userID := r.Context().Value(userIDKey).(string)
+		recipeID, err := recipeDb.CreateRecipe(userID, recipe)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
@@ -130,7 +131,8 @@ func handleDesignGetRecipe(recipeDb rec.RecipeDatabase) http.Handler {
 
 func handleDesignGetAllRecipes(recipeDb rec.RecipeDatabase) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		recipes, err := recipeDb.GetAllRecipes()
+		userID := r.Context().Value(userIDKey).(string)
+		recipes, err := recipeDb.GetAllRecipes(userID)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
