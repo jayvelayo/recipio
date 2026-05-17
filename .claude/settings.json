@@ -1,0 +1,23 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "f=$(jq -r '.tool_input.file_path // empty'); if [[ \"$f\" == *frontend* ]]; then (cd /mnt/new-media/repos/recipio/frontend && npm run test -- --run 2>&1 | tail -15); fi || true",
+            "timeout": 60,
+            "statusMessage": "Running frontend tests..."
+          },
+          {
+            "type": "command",
+            "command": "f=$(jq -r '.tool_input.file_path // empty'); if [[ \"$f\" == *backend* ]]; then (cd /mnt/new-media/repos/recipio/backend && go test ./... 2>&1 | tail -15); fi || true",
+            "timeout": 120,
+            "statusMessage": "Running backend tests..."
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -68,7 +68,9 @@ const handleFormChange = (e) => {
     e.preventDefault();
     mutation.mutate({
       ...recipe,
-      ingredients: recipe.ingredients.filter(Boolean).map(parseIngredient),
+      ingredients: recipe.ingredients.filter(Boolean).map(ing =>
+        typeof ing === 'string' ? parseIngredient(ing) : ing
+      ),
       instructions: recipe.instructions.filter(Boolean),
       tags: recipe.tags,
     });

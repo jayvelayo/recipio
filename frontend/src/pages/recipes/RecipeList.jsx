@@ -18,7 +18,7 @@ const rowVariants = {
 };
 
 function displayTagsToString(tags) {
-  if (typeof tags === 'undefined') {
+  if (!tags?.length) {
     return "None"
   }
   return tags.join(", ")

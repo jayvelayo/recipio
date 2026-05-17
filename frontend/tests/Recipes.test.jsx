@@ -309,10 +309,11 @@ describe('AddRecipeForm', () => {
     expect(screen.getByLabelText(/ingredients/i)).toBeInTheDocument()
   })
 
-  it('has Manual Entry and AI toggle buttons', () => {
+  it('has Manual, Paste Text (AI), and From URL toggle buttons', () => {
     renderAddRecipe()
-    expect(screen.getByRole('button', { name: /manual entry/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /add recipe using ai/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^manual$/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /paste text/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /from url/i })).toBeInTheDocument()
   })
 
   it('accepts input in the recipe name field', () => {
@@ -331,21 +332,21 @@ describe('AddRecipeForm', () => {
     expect(screen.getByLabelText(/ingredients/i).value).toContain('2 eggs')
   })
 
-  it('switches to AI mode when the AI button is clicked', () => {
+  it('switches to AI mode when the Paste Text button is clicked', () => {
     renderAddRecipe()
-    fireEvent.click(screen.getByRole('button', { name: /add recipe using ai/i }))
+    fireEvent.click(screen.getByRole('button', { name: /paste text/i }))
     expect(screen.getByLabelText(/paste your recipe/i)).toBeInTheDocument()
   })
 
   it('disables Preview button when AI textarea is empty', () => {
     renderAddRecipe()
-    fireEvent.click(screen.getByRole('button', { name: /add recipe using ai/i }))
+    fireEvent.click(screen.getByRole('button', { name: /paste text/i }))
     expect(screen.getByRole('button', { name: /preview recipe/i })).toBeDisabled()
   })
 
   it('enables Preview button after text is entered', () => {
     renderAddRecipe()
-    fireEvent.click(screen.getByRole('button', { name: /add recipe using ai/i }))
+    fireEvent.click(screen.getByRole('button', { name: /paste text/i }))
     fireEvent.change(screen.getByLabelText(/paste your recipe/i), {
       target: { value: 'Some recipe text here' },
     })
@@ -354,7 +355,7 @@ describe('AddRecipeForm', () => {
 
   it('shows a character counter in AI mode', () => {
     renderAddRecipe()
-    fireEvent.click(screen.getByRole('button', { name: /add recipe using ai/i }))
+    fireEvent.click(screen.getByRole('button', { name: /paste text/i }))
     expect(screen.getByText(/0 \/ 2000/)).toBeInTheDocument()
   })
 
@@ -366,7 +367,7 @@ describe('AddRecipeForm', () => {
     })
 
     renderAddRecipe()
-    fireEvent.click(screen.getByRole('button', { name: /add recipe using ai/i }))
+    fireEvent.click(screen.getByRole('button', { name: /paste text/i }))
     fireEvent.change(screen.getByLabelText(/paste your recipe/i), {
       target: { value: 'French toast recipe text' },
     })
@@ -384,7 +385,7 @@ describe('AddRecipeForm', () => {
     apis.parseRecipe.mockRejectedValue(new Error('TIMEOUT'))
 
     renderAddRecipe()
-    fireEvent.click(screen.getByRole('button', { name: /add recipe using ai/i }))
+    fireEvent.click(screen.getByRole('button', { name: /paste text/i }))
     fireEvent.change(screen.getByLabelText(/paste your recipe/i), {
       target: { value: 'Some recipe text' },
     })
@@ -399,7 +400,7 @@ describe('AddRecipeForm', () => {
     apis.parseRecipe.mockRejectedValue(new Error('RATE_LIMIT'))
 
     renderAddRecipe()
-    fireEvent.click(screen.getByRole('button', { name: /add recipe using ai/i }))
+    fireEvent.click(screen.getByRole('button', { name: /paste text/i }))
     fireEvent.change(screen.getByLabelText(/paste your recipe/i), {
       target: { value: 'Some recipe text' },
     })
@@ -418,7 +419,7 @@ describe('AddRecipeForm', () => {
     })
 
     renderAddRecipe()
-    fireEvent.click(screen.getByRole('button', { name: /add recipe using ai/i }))
+    fireEvent.click(screen.getByRole('button', { name: /paste text/i }))
     fireEvent.change(screen.getByLabelText(/paste your recipe/i), {
       target: { value: 'French toast recipe text' },
     })
@@ -430,6 +431,39 @@ describe('AddRecipeForm', () => {
     await waitFor(() =>
       expect(screen.getByDisplayValue('French Toast')).toBeInTheDocument()
     )
+  })
+
+  it('calls createRecipe with correct data after AI parse and "Use This Recipe"', async () => {
+    const parsedRecipe = {
+      name: 'French Toast',
+      ingredients: [{ quantity: '2', name: 'eggs' }, { quantity: '2 slices', name: 'bread' }],
+      instructions: ['Beat eggs until smooth', 'Dip bread in egg mix', 'Cook on pan'],
+    }
+    apis.parseRecipe.mockResolvedValue(parsedRecipe)
+    apis.createRecipe.mockReturnValue(new Promise(() => {}))
+
+    renderAddRecipe()
+    fireEvent.click(screen.getByRole('button', { name: /paste text/i }))
+    fireEvent.change(screen.getByLabelText(/paste your recipe/i), {
+      target: { value: 'French toast recipe text' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: /preview recipe/i }))
+    await waitFor(() => screen.getByText('Recipe Preview'))
+
+    fireEvent.click(screen.getByRole('button', { name: /use this recipe/i }))
+    await waitFor(() => screen.getByDisplayValue('French Toast'))
+
+    const form = screen.getByRole('button', { name: /save recipe/i }).closest('form')
+    fireEvent.submit(form)
+
+    await waitFor(() => expect(apis.createRecipe).toHaveBeenCalled())
+    const submitted = apis.createRecipe.mock.calls[0][0]
+    expect(submitted.name).toBe('French Toast')
+    expect(submitted.ingredients).toEqual([
+      { quantity: '2', name: 'eggs' },
+      { quantity: '2 slices', name: 'bread' },
+    ])
+    expect(submitted.instructions).toEqual(['Beat eggs until smooth', 'Dip bread in egg mix', 'Cook on pan'])
   })
 
 })
