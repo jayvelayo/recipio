@@ -1,55 +1,62 @@
 import { useState } from 'react';
 import { useAuth } from '/src/pages/common/AuthContext';
+import { loginAPI, getUserInfo } from '/src/pages/common/auth_apis';
 import { FiMail, FiLock } from 'react-icons/fi';
 
-function Login() {
+function Login({ onShowRegister }) {
     const { login } = useAuth();
-    const [formData, setFormData] = useState({
-        username: '',
-        password: ''
-    })
+    const [formData, setFormData] = useState({ email: '', password: '' });
+    const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
 
     const handleFormChange = (e) => {
-        const {name, value} = e.target
-        setFormData({...formData, [name]: value})
-    }
+        const { name, value } = e.target;
+        setFormData({ ...formData, [name]: value });
+    };
 
     const handleSubmit = async (e) => {
-        e.preventDefault()
+        e.preventDefault();
+        setError('');
         setIsLoading(true);
         try {
-            await login(formData);
+            const { token, email } = await loginAPI(formData.email, formData.password);
+            const { name } = await getUserInfo(token);
+            login(token, email, name);
+        } catch (err) {
+            setError(err.message || 'Sign in failed');
         } finally {
             setIsLoading(false);
         }
-    }
+    };
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-indigo-600 to-indigo-800 flex items-center justify-center p-4">
             <div className="w-full max-w-md">
                 <div className="bg-white rounded-lg shadow-xl p-8">
-                    {/* Logo/Title */}
                     <div className="text-center mb-8">
                         <h1 className="text-4xl font-bold text-indigo-600 mb-2">Recipio</h1>
                         <p className="text-gray-600">Sign in to your account</p>
                     </div>
 
-                    {/* Form */}
+                    {error && (
+                        <div className="mb-4 px-4 py-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg">
+                            {error}
+                        </div>
+                    )}
+
                     <form onSubmit={handleSubmit} className="space-y-6">
-                        {/* Username Field */}
                         <div>
-                            <label htmlFor="username" className="block text-sm font-medium text-gray-900 mb-2">
-                                Username
+                            <label htmlFor="email" className="block text-sm font-medium text-gray-900 mb-2">
+                                Email
                             </label>
                             <div className="relative">
                                 <FiMail className="absolute left-3 top-3 text-gray-400" size={20} />
                                 <input
-                                    id="username"
-                                    name="username"
-                                    value={formData.username}
-                                    type="text"
-                                    placeholder="Enter your username"
+                                    id="email"
+                                    name="email"
+                                    value={formData.email}
+                                    type="email"
+                                    placeholder="Enter your email"
                                     onChange={handleFormChange}
                                     required
                                     className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition"
@@ -57,7 +64,6 @@ function Login() {
                             </div>
                         </div>
 
-                        {/* Password Field */}
                         <div>
                             <label htmlFor="password" className="block text-sm font-medium text-gray-900 mb-2">
                                 Password
@@ -77,7 +83,6 @@ function Login() {
                             </div>
                         </div>
 
-                        {/* Submit Button */}
                         <button
                             type="submit"
                             disabled={isLoading}
@@ -87,14 +92,19 @@ function Login() {
                         </button>
                     </form>
 
-                    {/* Footer */}
                     <p className="text-center text-sm text-gray-600 mt-6">
-                        Made with care for food lovers
+                        Don't have an account?{' '}
+                        <button
+                            onClick={onShowRegister}
+                            className="text-indigo-600 font-medium hover:underline"
+                        >
+                            Create one
+                        </button>
                     </p>
                 </div>
             </div>
         </div>
-    )
+    );
 }
 
-export default Login
+export default Login;

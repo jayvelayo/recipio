@@ -32,3 +32,24 @@ type CreateGroceryListResponse struct {
 	ID   string `json:"id"`
 	Name string `json:"name"`
 }
+
+type RegisterRequest struct {
+	Name     string `json:"name"`
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+type LoginRequest struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+type LoginResponse struct {
+	Token string `json:"token"`
+	Email string `json:"email"`
+}
+
+type UserInfoResponse struct {
+	Name  string `json:"name"`
+	Email string `json:"email"`
+}

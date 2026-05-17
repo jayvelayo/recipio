@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jayvelayo/recipio/internal/authn"
 )
 
 // ===== Common Auth functions =====
@@ -79,6 +80,23 @@ func (db *SqliteDatabaseContext) GetUserIDByEmail(email string) (uuid.UUID, erro
 		return uuid.Nil, fmt.Errorf("invalid uuid in db: %w", err)
 	}
 	return id, nil
+}
+
+func (db *SqliteDatabaseContext) GetUserByID(userID string) (authn.User, error) {
+	var u authn.User
+	var idStr string
+	err := db.sqliteDb.QueryRow(
+		"SELECT id, name, email, created FROM users WHERE id = ?", userID,
+	).Scan(&idStr, &u.Name, &u.Email, &u.Created)
+	if err != nil {
+		return authn.User{}, fmt.Errorf("user not found: %w", err)
+	}
+	id, err := uuid.Parse(idStr)
+	if err != nil {
+		return authn.User{}, fmt.Errorf("invalid uuid in db: %w", err)
+	}
+	u.ID = id
+	return u, nil
 }
 
 // ===== Password =====

@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/jayvelayo/recipio/internal/authn"
 	rec "github.com/jayvelayo/recipio/internal/recipes"
 )
 
@@ -14,6 +15,7 @@ import (
 func SetUpRoutes(
 	mux *http.ServeMux,
 	recipeDatabase rec.RecipeDatabase,
+	authDatabase authn.PasswordDatabase,
 	allowedOrigins []string,
 ) {
 	setupSPAHandler(mux)
@@ -37,6 +39,14 @@ func SetUpRoutes(
 	mux.Handle("DELETE /meal-plans/{meal_plan_id}", withCORS(allowedOrigins, handleDesignDeleteMealPlan(recipeDatabase)))
 	mux.Handle("OPTIONS /meal-plans", withCORS(allowedOrigins, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})))
 	mux.Handle("OPTIONS /meal-plans/{meal_plan_id}", withCORS(allowedOrigins, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})))
+
+	// Auth endpoints
+	mux.Handle("GET /auth/me", withCORS(allowedOrigins, handleGetUserInfo(authDatabase)))
+	mux.Handle("POST /auth/register", withCORS(allowedOrigins, handlePasswordRegister(authDatabase)))
+	mux.Handle("POST /auth/login", withCORS(allowedOrigins, handlePasswordLogin(authDatabase)))
+	mux.Handle("OPTIONS /auth/me", withCORS(allowedOrigins, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})))
+	mux.Handle("OPTIONS /auth/register", withCORS(allowedOrigins, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})))
+	mux.Handle("OPTIONS /auth/login", withCORS(allowedOrigins, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})))
 
 	// Grocery list endpoints
 	mux.Handle("GET /grocery-list/{meal_plan_id}", withCORS(allowedOrigins, handleDesignGetGroceryList(recipeDatabase)))

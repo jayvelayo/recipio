@@ -1,6 +1,7 @@
 package authn
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/google/uuid"
@@ -24,6 +25,15 @@ func (m *mockGoogleAuthDatabase) CreateUser(name, email string) (uuid.UUID, erro
 	id := uuid.New()
 	m.users[email] = id
 	return id, nil
+}
+
+func (m *mockGoogleAuthDatabase) GetUserByID(userID string) (User, error) {
+	for email, id := range m.users {
+		if id.String() == userID {
+			return User{ID: id, Email: email}, nil
+		}
+	}
+	return User{}, fmt.Errorf("user not found")
 }
 
 func (m *mockGoogleAuthDatabase) CreateSession(userID string) (string, error) {

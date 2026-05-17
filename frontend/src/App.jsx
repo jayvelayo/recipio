@@ -4,6 +4,7 @@ import { router, sidebarLinks} from './routes.jsx'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useState } from 'react';
 import Login from '/src/pages/common/Login';
+import Register from '/src/pages/common/Register';
 import { AuthProvider, useAuth } from '/src/pages/common/AuthContext';
 import { FiLogOut, FiMenu, FiX } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -25,10 +26,14 @@ function App() {
 export function Layout() {
   const { isAuthenticated } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [showRegister, setShowRegister] = useState(false);
   const location = useLocation();
 
   if (!isAuthenticated) {
-    return <Login/>
+    if (showRegister) {
+      return <Register onShowLogin={() => setShowRegister(false)} />;
+    }
+    return <Login onShowRegister={() => setShowRegister(true)} />;
   }
 
   return (
@@ -78,11 +83,12 @@ function HeaderBar({ onMenuClick }) {
 }
 
 function UserInfoBox() {
-  const { user, logout } = useAuth();
+  const { session, logout } = useAuth();
   return (
     <div className="flex items-center gap-4">
       <div className="text-right">
-        <p className="text-sm font-medium text-gray-900">{user?.username}</p>
+        <p className="text-sm font-medium text-gray-900">{session?.name}</p>
+        <p className="text-xs text-gray-500">{session?.email}</p>
       </div>
       <button
         onClick={logout}

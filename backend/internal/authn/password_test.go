@@ -8,21 +8,36 @@ import (
 )
 
 type mockPasswordDatabase struct {
-	users     map[string]uuid.UUID
-	passwords map[string]string
+	users      map[string]uuid.UUID
+	userNames  map[string]string
+	userEmails map[string]string
+	passwords  map[string]string
 }
 
 func newMockPasswordDatabase() *mockPasswordDatabase {
 	return &mockPasswordDatabase{
-		users:     make(map[string]uuid.UUID),
-		passwords: make(map[string]string),
+		users:      make(map[string]uuid.UUID),
+		userNames:  make(map[string]string),
+		userEmails: make(map[string]string),
+		passwords:  make(map[string]string),
 	}
 }
 
 func (m *mockPasswordDatabase) CreateUser(name, email string) (uuid.UUID, error) {
 	id := uuid.New()
 	m.users[email] = id
+	m.userNames[id.String()] = name
+	m.userEmails[id.String()] = email
 	return id, nil
+}
+
+func (m *mockPasswordDatabase) GetUserByID(userID string) (User, error) {
+	name, ok := m.userNames[userID]
+	if !ok {
+		return User{}, fmt.Errorf("user not found")
+	}
+	id, _ := uuid.Parse(userID)
+	return User{ID: id, Name: name, Email: m.userEmails[userID]}, nil
 }
 
 func (m *mockPasswordDatabase) CreateSession(userID string) (string, error) {

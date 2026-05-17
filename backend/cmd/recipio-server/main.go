@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/jayvelayo/recipio/internal/authn"
 	rec "github.com/jayvelayo/recipio/internal/recipes"
 	"github.com/jayvelayo/recipio/internal/sqlite_db"
 )
@@ -51,10 +52,11 @@ func loadEnvFile() error {
 // newServer creates and returns the HTTP server handler with all routes
 func newServer(
 	recipeDatabase rec.RecipeDatabase,
+	authDatabase authn.PasswordDatabase,
 	allowedOrigins []string,
 ) http.Handler {
 	mux := http.NewServeMux()
-	SetUpRoutes(mux, recipeDatabase, allowedOrigins)
+	SetUpRoutes(mux, recipeDatabase, authDatabase, allowedOrigins)
 	return mux
 }
 
@@ -88,12 +90,17 @@ func main() {
 	}
 	defer recipeDb.CloseDb()
 
+	authDb, ok := recipeDb.(authn.PasswordDatabase)
+	if !ok {
+		log.Fatal("database does not implement authn.PasswordDatabase")
+	}
+
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "4002"
 	}
 
-	srv := withLogging(newServer(recipeDb, allowedOrigins))
+	srv := withLogging(newServer(recipeDb, authDb, allowedOrigins))
 	log.Printf("Starting server on :%s...", port)
 	if err := http.ListenAndServe(":"+port, srv); err != nil {
 		log.Fatalf("Could not start server: %s\n", err)

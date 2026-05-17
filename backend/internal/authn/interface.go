@@ -22,4 +22,5 @@ type AuthDatabase interface {
 	CreateSession(userID string) (sessionToken string, err error)
 	GetUserIDBySessionToken(sessionToken string) (userID string, err error)
 	GetUserIDByEmail(email string) (uuid.UUID, error)
+	GetUserByID(userID string) (User, error)
 }

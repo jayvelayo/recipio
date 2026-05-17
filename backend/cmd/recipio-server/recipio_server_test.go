@@ -33,6 +33,6 @@ func getResponseBody(r *httptest.ResponseRecorder) string {
 
 func createFakeServer(db rec.RecipeDatabase) http.Handler {
 	mux := http.NewServeMux()
-	SetUpRoutes(mux, db, []string{})
+	SetUpRoutes(mux, db, nil, []string{})
 	return mux
 }
