@@ -13,6 +13,7 @@ type Recipe struct {
 	Description  string          `json:"description"`
 	Ingredients  []Ingredient    `json:"ingredients"`
 	Instructions InstructionList `json:"instructions"`
+	Tags         []string        `json:"tags"`
 }
 
 type Recipes []Recipe

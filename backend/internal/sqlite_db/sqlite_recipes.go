@@ -25,18 +25,32 @@ func (iface *SqliteDatabaseContext) CreateRecipe(userID string, newRecipe rec.Re
 		return "", fmt.Errorf("failed to insert recipe: %w", err)
 	}
 
-	stmt, err := tx.Prepare("INSERT INTO ingredients (recipe_id, name, quantity) VALUES (?, ?, ?)")
+	ingStmt, err := tx.Prepare("INSERT INTO ingredients (recipe_id, name, quantity) VALUES (?, ?, ?)")
 	if err != nil {
 		return "", fmt.Errorf("failed to prepare ingredient insert: %w", err)
 	}
-	defer stmt.Close()
+	defer ingStmt.Close()
 
 	for _, ing := range newRecipe.Ingredients {
 		if ing.Name == "" {
 			return "", fmt.Errorf("ingredient name cannot be empty")
 		}
-		if _, err := stmt.Exec(recipeID, ing.Name, ing.Quantity); err != nil {
+		if _, err := ingStmt.Exec(recipeID, ing.Name, ing.Quantity); err != nil {
 			return "", fmt.Errorf("failed to insert ingredient (%s): %w", ing.Name, err)
+		}
+	}
+
+	tagStmt, err := tx.Prepare("INSERT OR IGNORE INTO recipe_tags (recipe_id, tag) VALUES (?, ?)")
+	if err != nil {
+		return "", fmt.Errorf("failed to prepare tag insert: %w", err)
+	}
+	defer tagStmt.Close()
+
+	for _, tag := range newRecipe.Tags {
+		if tag = strings.ToLower(strings.TrimSpace(tag)); tag != "" {
+			if _, err := tagStmt.Exec(recipeID, tag); err != nil {
+				return "", fmt.Errorf("failed to insert tag (%s): %w", tag, err)
+			}
 		}
 	}
 
@@ -60,18 +74,32 @@ func (ctx *SqliteDatabaseContext) GetRecipe(id string) (rec.Recipe, error) {
 	}
 	recipe.Instructions = decodeInstructionList(instructions)
 
-	rows, err := db.Query("SELECT name, quantity FROM ingredients WHERE recipe_id = ?", recipe.ID)
+	ingRows, err := db.Query("SELECT name, quantity FROM ingredients WHERE recipe_id = ?", recipe.ID)
 	if err != nil {
 		return rec.Recipe{}, err
 	}
-	defer rows.Close()
+	defer ingRows.Close()
 
-	for rows.Next() {
+	for ingRows.Next() {
 		var ing rec.Ingredient
-		if err := rows.Scan(&ing.Name, &ing.Quantity); err != nil {
+		if err := ingRows.Scan(&ing.Name, &ing.Quantity); err != nil {
 			return rec.Recipe{}, err
 		}
 		recipe.Ingredients = append(recipe.Ingredients, ing)
+	}
+
+	tagRows, err := db.Query("SELECT tag FROM recipe_tags WHERE recipe_id = ? ORDER BY tag", recipe.ID)
+	if err != nil {
+		return rec.Recipe{}, err
+	}
+	defer tagRows.Close()
+
+	for tagRows.Next() {
+		var tag string
+		if err := tagRows.Scan(&tag); err != nil {
+			return rec.Recipe{}, err
+		}
+		recipe.Tags = append(recipe.Tags, tag)
 	}
 	return recipe, nil
 }
@@ -101,18 +129,36 @@ func (ctx *SqliteDatabaseContext) UpdateRecipe(id string, recipe rec.Recipe) err
 		return fmt.Errorf("failed to delete ingredients: %w", err)
 	}
 
-	stmt, err := tx.Prepare("INSERT INTO ingredients (recipe_id, name, quantity) VALUES (?, ?, ?)")
+	ingStmt, err := tx.Prepare("INSERT INTO ingredients (recipe_id, name, quantity) VALUES (?, ?, ?)")
 	if err != nil {
 		return fmt.Errorf("failed to prepare ingredient insert: %w", err)
 	}
-	defer stmt.Close()
+	defer ingStmt.Close()
 
 	for _, ing := range recipe.Ingredients {
 		if ing.Name == "" {
 			return fmt.Errorf("ingredient name cannot be empty")
 		}
-		if _, err := stmt.Exec(id, ing.Name, ing.Quantity); err != nil {
+		if _, err := ingStmt.Exec(id, ing.Name, ing.Quantity); err != nil {
 			return fmt.Errorf("failed to insert ingredient: %w", err)
+		}
+	}
+
+	if _, err := tx.Exec("DELETE FROM recipe_tags WHERE recipe_id = ?", id); err != nil {
+		return fmt.Errorf("failed to delete tags: %w", err)
+	}
+
+	tagStmt, err := tx.Prepare("INSERT OR IGNORE INTO recipe_tags (recipe_id, tag) VALUES (?, ?)")
+	if err != nil {
+		return fmt.Errorf("failed to prepare tag insert: %w", err)
+	}
+	defer tagStmt.Close()
+
+	for _, tag := range recipe.Tags {
+		if tag = strings.ToLower(strings.TrimSpace(tag)); tag != "" {
+			if _, err := tagStmt.Exec(id, tag); err != nil {
+				return fmt.Errorf("failed to insert tag (%s): %w", tag, err)
+			}
 		}
 	}
 
@@ -132,6 +178,9 @@ func (ctx *SqliteDatabaseContext) DeleteRecipe(id string) error {
 
 	if _, err := tx.Exec("DELETE FROM ingredients WHERE recipe_id = ?", id); err != nil {
 		return fmt.Errorf("failed to delete ingredients: %w", err)
+	}
+	if _, err := tx.Exec("DELETE FROM recipe_tags WHERE recipe_id = ?", id); err != nil {
+		return fmt.Errorf("failed to delete tags: %w", err)
 	}
 
 	res, err := tx.Exec("DELETE FROM recipes WHERE id = ?", id)
@@ -195,6 +244,33 @@ func (ctx *SqliteDatabaseContext) GetAllRecipes(userID string) (rec.Recipes, err
 	if current.ID != "" {
 		recipes = append(recipes, current)
 	}
+
+	if len(recipes) > 0 {
+		tagRows, err := db.Query(`
+			SELECT rt.recipe_id, rt.tag FROM recipe_tags rt
+			INNER JOIN recipes r ON rt.recipe_id = r.id
+			WHERE r.user_id = ?
+			ORDER BY rt.tag`, userID)
+		if err != nil {
+			return rec.Recipes{}, err
+		}
+		defer tagRows.Close()
+
+		tagMap := make(map[string][]string)
+		for tagRows.Next() {
+			var recipeID, tag string
+			if err := tagRows.Scan(&recipeID, &tag); err != nil {
+				return rec.Recipes{}, err
+			}
+			tagMap[recipeID] = append(tagMap[recipeID], tag)
+		}
+		for i := range recipes {
+			if tags, ok := tagMap[recipes[i].ID]; ok {
+				recipes[i].Tags = tags
+			}
+		}
+	}
+
 	return recipes, nil
 }
 

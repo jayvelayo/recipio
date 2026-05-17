@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { deleteRecipe, getRecipes } from "./recipe_apis";
 import { Form } from "react-router";
 import { SkeletonList } from '/src/pages/common/LoadingPage';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { FiTrash2, FiSearch, FiPlus } from 'react-icons/fi';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
@@ -77,14 +77,21 @@ function RecipeRowPreview({recipe}) {
 
 function RecipeListRows({recipes}) {
   const [searchQuery, setSearchQuery] = useState('');
-  const [recipeItems, setRecipeItems] = useState(recipes);
+  const [selectedTags, setSelectedTags] = useState([]);
 
-  useEffect(() => {
-    const results = recipes?.filter(item =>
-      item.name.toLowerCase().includes(searchQuery.toLowerCase())
+  const allTags = [...new Set(recipes?.flatMap(r => r.tags ?? []))].sort();
+
+  const toggleTag = (tag) => {
+    setSelectedTags(prev =>
+      prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]
     );
-    setRecipeItems(results);
-  }, [searchQuery, recipes]);
+  };
+
+  const filtered = recipes?.filter(item => {
+    const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesTags = selectedTags.length === 0 || selectedTags.every(t => item.tags?.includes(t));
+    return matchesSearch && matchesTags;
+  });
 
   if (!recipes || recipes.length === 0) {
     return (
@@ -94,12 +101,12 @@ function RecipeListRows({recipes}) {
     )
   }
 
-  const sorted = recipeItems?.sort((a, b) => a.name.localeCompare(b.name));
+  const sorted = filtered?.sort((a, b) => a.name.localeCompare(b.name));
 
   return (
     <>
       {/* Search Bar */}
-      <div className="mb-6">
+      <div className="mb-4">
         <div className="relative">
           <FiSearch className="absolute left-3 top-3 text-gray-400" size={20} />
           <input
@@ -112,6 +119,33 @@ function RecipeListRows({recipes}) {
         </div>
       </div>
 
+      {/* Tag Filters */}
+      {allTags.length > 0 && (
+        <div className="flex flex-wrap gap-2 mb-6">
+          {allTags.map(tag => (
+            <button
+              key={tag}
+              onClick={() => toggleTag(tag)}
+              className={`px-3 py-1 rounded-full text-sm font-medium transition ${
+                selectedTags.includes(tag)
+                  ? 'bg-indigo-600 text-white'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              {tag}
+            </button>
+          ))}
+          {selectedTags.length > 0 && (
+            <button
+              onClick={() => setSelectedTags([])}
+              className="px-3 py-1 rounded-full text-sm font-medium text-gray-400 hover:text-gray-600 transition"
+            >
+              Clear
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Recipe List */}
       <motion.div
         className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden"
@@ -119,11 +153,15 @@ function RecipeListRows({recipes}) {
         initial="hidden"
         animate="show"
       >
-        {sorted?.map(recipe => (
-          <motion.div key={recipe.id} variants={rowVariants}>
-            <RecipeRowPreview recipe={recipe} />
-          </motion.div>
-        ))}
+        {sorted?.length === 0 ? (
+          <p className="text-gray-500 text-center py-8">No recipes match your filters.</p>
+        ) : (
+          sorted?.map(recipe => (
+            <motion.div key={recipe.id} variants={rowVariants}>
+              <RecipeRowPreview recipe={recipe} />
+            </motion.div>
+          ))
+        )}
       </motion.div>
     </>
   )

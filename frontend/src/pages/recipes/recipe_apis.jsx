@@ -24,6 +24,7 @@ export function createRecipe(newRecipe) {
     name: newRecipe.name,
     ingredients: Array.isArray(newRecipe.ingredients) ? newRecipe.ingredients : [],
     instructions: Array.isArray(newRecipe.instructions) ? newRecipe.instructions : [],
+    tags: Array.isArray(newRecipe.tags) ? newRecipe.tags : [],
   };
   return fetch('/recipes', {
     method: 'POST',
@@ -53,6 +54,7 @@ export function updateRecipe({ id, recipe }) {
     name: recipe.name,
     ingredients: Array.isArray(recipe.ingredients) ? recipe.ingredients : [],
     instructions: Array.isArray(recipe.instructions) ? recipe.instructions : [],
+    tags: Array.isArray(recipe.tags) ? recipe.tags : [],
   };
   return fetch(`/recipes/${id}`, {
     method: 'PUT',

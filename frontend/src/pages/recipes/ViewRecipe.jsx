@@ -8,6 +8,7 @@ import { FiArrowLeft, FiEdit2, FiCheck, FiX } from 'react-icons/fi';
 import { parseIngredient } from '../../utils/parseIngredient';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
+import { TagInput } from '../common/TagInput';
 
 function getTagColor(tag) {
   const tagColorMap = {
@@ -38,6 +39,7 @@ export function ViewRecipe() {
   const [editName, setEditName] = useState('');
   const [editIngredients, setEditIngredients] = useState('');
   const [editInstructions, setEditInstructions] = useState('');
+  const [editTags, setEditTags] = useState([]);
 
   const mutation = useMutation({
     mutationFn: updateRecipe,
@@ -63,6 +65,7 @@ export function ViewRecipe() {
     setEditName(recipe.name);
     setEditIngredients(ingredientsToText(ingredients));
     setEditInstructions(steps.join('\n'));
+    setEditTags(recipe.tags ?? []);
     setIsEditing(true);
   };
 
@@ -78,6 +81,7 @@ export function ViewRecipe() {
         name: editName,
         ingredients: editIngredients.split(/\r?\n/).filter(Boolean).map(parseIngredient),
         instructions: editInstructions.split(/\r?\n/).filter(Boolean),
+        tags: editTags,
       },
     });
   };
@@ -137,6 +141,13 @@ export function ViewRecipe() {
                 rows="8"
                 required
               />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-900 mb-2">
+                Tags <span className="text-gray-400 font-normal">(optional)</span>
+              </label>
+              <TagInput tags={editTags} onChange={setEditTags} />
             </div>
 
             <div className="flex gap-3 pt-4">

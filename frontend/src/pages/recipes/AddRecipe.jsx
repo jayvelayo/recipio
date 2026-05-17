@@ -5,6 +5,7 @@ import { useNavigate } from "react-router";
 import { FiArrowLeft } from 'react-icons/fi';
 import { parseIngredient } from '../../utils/parseIngredient';
 import { toast } from 'sonner';
+import { TagInput } from '../common/TagInput';
 
 export function AddRecipeForm() {
   const navigate = useNavigate();
@@ -26,6 +27,7 @@ export function AddRecipeForm() {
     name: "",
     ingredients: [],
     instructions: [],
+    tags: [],
   }
   const [recipe, setRecipe] = useState(blankRecipe);
   const [useAI, setUseAI] = useState(false);
@@ -67,6 +69,7 @@ const handleFormChange = (e) => {
       ...recipe,
       ingredients: recipe.ingredients.filter(Boolean).map(parseIngredient),
       instructions: recipe.instructions.filter(Boolean),
+      tags: recipe.tags,
     });
   };
 
@@ -82,6 +85,7 @@ const handleFormChange = (e) => {
         name: parsedRecipe.name || "",
         ingredients: Array.isArray(parsedRecipe.ingredients) ? parsedRecipe.ingredients : [],
         instructions: Array.isArray(parsedRecipe.instructions) ? parsedRecipe.instructions : [],
+        tags: recipe.tags,
       };
       setRecipe(normalizedRecipe);
       setPreview(normalizedRecipe);
@@ -326,10 +330,18 @@ const handleFormChange = (e) => {
               />
             </div>
 
+            {/* Tags */}
+            <div>
+              <label className="block text-sm font-medium text-gray-900 mb-2">
+                Tags <span className="text-gray-400 font-normal">(optional)</span>
+              </label>
+              <TagInput tags={recipe.tags} onChange={tags => setRecipe({ ...recipe, tags })} />
+            </div>
+
             {/* Form Actions */}
             <div className="flex gap-3 pt-4">
-              <button 
-                type="submit" 
+              <button
+                type="submit"
                 disabled={mutation.isPending}
                 className="flex-1 bg-indigo-600 text-white font-medium py-2 rounded-lg hover:bg-indigo-700 disabled:bg-indigo-400 disabled:cursor-not-allowed transition"
               >

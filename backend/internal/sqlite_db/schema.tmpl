@@ -47,6 +47,13 @@ CREATE TABLE IF NOT EXISTS grocery_list_items (
     FOREIGN KEY (grocery_list_id) REFERENCES grocery_lists(id)
 );
 
+CREATE TABLE IF NOT EXISTS recipe_tags (
+    recipe_id TEXT NOT NULL,
+    tag TEXT NOT NULL,
+    PRIMARY KEY (recipe_id, tag),
+    FOREIGN KEY (recipe_id) REFERENCES recipes(id)
+);
+
 CREATE TABLE IF NOT EXISTS users (
     id TEXT PRIMARY KEY,
     email TEXT NOT NULL UNIQUE,

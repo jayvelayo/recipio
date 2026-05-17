@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 
 	rec "github.com/jayvelayo/recipio/internal/recipes"
 )
@@ -33,6 +34,13 @@ func handleDesignCreateRecipe(recipeDb rec.RecipeDatabase) http.Handler {
 			}
 		}
 		recipe.Instructions = instructions
+		var tags []string
+		for _, t := range recipe.Tags {
+			if t = strings.ToLower(strings.TrimSpace(sanitizeRecipeText(t))); t != "" {
+				tags = append(tags, t)
+			}
+		}
+		recipe.Tags = tags
 		if recipe.Name == "" || len(recipe.Ingredients) == 0 || len(recipe.Instructions) == 0 {
 			http.Error(w, "Missing required fields: name, ingredients, instructions", http.StatusBadRequest)
 			return
@@ -77,6 +85,13 @@ func handleDesignUpdateRecipe(recipeDb rec.RecipeDatabase) http.Handler {
 			}
 		}
 		recipe.Instructions = instructions
+		var tags []string
+		for _, t := range recipe.Tags {
+			if t = strings.ToLower(strings.TrimSpace(sanitizeRecipeText(t))); t != "" {
+				tags = append(tags, t)
+			}
+		}
+		recipe.Tags = tags
 		if recipe.Name == "" || len(recipe.Ingredients) == 0 || len(recipe.Instructions) == 0 {
 			http.Error(w, "Missing required fields: name, ingredients, instructions", http.StatusBadRequest)
 			return
