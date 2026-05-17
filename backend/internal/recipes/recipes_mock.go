@@ -1,10 +1,17 @@
 package recipes
 
-import "fmt"
+import (
+	"fmt"
+	"strconv"
+)
 
 type MockRecipeDatabase struct {
-	recipes     []Recipe
-	recipeCount int
+	recipes       []Recipe
+	recipeCount   int
+	mealPlans     []MealPlanSummary
+	mealPlanCount int
+	groceryLists  []GroceryList
+	groceryCount  int
 }
 
 func (db *MockRecipeDatabase) CreateRecipe(newRecipe Recipe) (uint64, error) {
@@ -42,39 +49,73 @@ func (db *MockRecipeDatabase) AddRecipeToMealPlan(id int) error {
 }
 
 func (db *MockRecipeDatabase) CreateMealPlan(recipeIDs []string) (string, error) {
-	return "1", nil
+	db.mealPlanCount++
+	id := strconv.Itoa(db.mealPlanCount)
+	db.mealPlans = append(db.mealPlans, MealPlanSummary{ID: id, RecipeNames: recipeIDs})
+	return id, nil
 }
 
 func (db *MockRecipeDatabase) GetAllMealPlans() ([]MealPlanSummary, error) {
-	return nil, nil
+	return db.mealPlans, nil
 }
 
 func (db *MockRecipeDatabase) GetGroceryList(mealPlanID string) ([]string, error) {
-	return []string{"mock ingredient"}, nil
+	for _, plan := range db.mealPlans {
+		if plan.ID == mealPlanID {
+			return []string{"mock ingredient"}, nil
+		}
+	}
+	return nil, fmt.Errorf("meal plan not found")
 }
 
 func (db *MockRecipeDatabase) DeleteMealPlan(mealPlanID string) error {
-	return nil
+	for i, plan := range db.mealPlans {
+		if plan.ID == mealPlanID {
+			db.mealPlans = append(db.mealPlans[:i], db.mealPlans[i+1:]...)
+			return nil
+		}
+	}
+	return fmt.Errorf("meal plan not found")
 }
 
 func (db *MockRecipeDatabase) CreateGroceryList(name string, items []GroceryListItem, mealPlanID *string) (string, error) {
-	return "1", nil
+	db.groceryCount++
+	id := strconv.Itoa(db.groceryCount)
+	db.groceryLists = append(db.groceryLists, GroceryList{ID: id, Name: name, Items: items, MealPlanID: mealPlanID})
+	return id, nil
 }
 
 func (db *MockRecipeDatabase) GetAllGroceryLists() ([]GroceryList, error) {
-	return []GroceryList{}, nil
+	return db.groceryLists, nil
 }
 
 func (db *MockRecipeDatabase) GetGroceryListByID(id string) (GroceryList, error) {
-	return GroceryList{}, fmt.Errorf("not implemented")
+	for _, list := range db.groceryLists {
+		if list.ID == id {
+			return list, nil
+		}
+	}
+	return GroceryList{}, fmt.Errorf("grocery list not found")
 }
 
 func (db *MockRecipeDatabase) UpdateGroceryList(id string, items []GroceryListItem) error {
-	return nil
+	for i, list := range db.groceryLists {
+		if list.ID == id {
+			db.groceryLists[i].Items = items
+			return nil
+		}
+	}
+	return fmt.Errorf("grocery list not found")
 }
 
 func (db *MockRecipeDatabase) DeleteGroceryList(id string) error {
-	return nil
+	for i, list := range db.groceryLists {
+		if list.ID == id {
+			db.groceryLists = append(db.groceryLists[:i], db.groceryLists[i+1:]...)
+			return nil
+		}
+	}
+	return fmt.Errorf("grocery list not found")
 }
 
 func (db *MockRecipeDatabase) UpdateRecipe(id int, recipe Recipe) error {

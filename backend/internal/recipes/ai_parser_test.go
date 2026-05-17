@@ -24,13 +24,23 @@ func TestParseRecipeText(t *testing.T) {
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		inner, _ := json.Marshal(want)
-		enc := json.NewEncoder(w)
-		enc.Encode(llmResponse{Response: string(inner), Done: false})
-		enc.Encode(llmResponse{Response: "", Done: true})
+		resp := groqResponse{
+			Choices: []struct {
+				Message struct {
+					Content string `json:"content"`
+				} `json:"message"`
+			}{
+				{Message: struct {
+					Content string `json:"content"`
+				}{Content: string(inner)}},
+			},
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(resp)
 	}))
 	defer server.Close()
 
-	parser := AIParser{APIURL: server.URL, Client: server.Client()}
+	parser := AIParser{APIURL: server.URL, APIKey: "test-key", Client: server.Client()}
 	got, err := parser.ParseRecipeText("French toast recipe text")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -51,11 +61,12 @@ func TestParseRecipeText(t *testing.T) {
 }
 
 func TestParseRecipeTextLive(t *testing.T) {
-	if os.Getenv("INTEGRATION") == "" {
-		t.Skip("set INTEGRATION=1 to run against live Ollama API")
+	apiKey := os.Getenv("GROQ_API_KEY")
+	if apiKey == "" {
+		t.Skip("set GROQ_API_KEY and INTEGRATION=1 to run against live Groq API")
 	}
 
-	parser := NewAIParser()
+	parser := NewAIParser(apiKey)
 	recipe, err := parser.ParseRecipeText(`French toast
 2 eggs
 1 cup milk

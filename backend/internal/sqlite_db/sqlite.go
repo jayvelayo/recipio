@@ -13,13 +13,6 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-const (
-	RecipeTableName          string = "recipes"
-	IngredientsTableName     string = "ingredients"
-	MealPlanTableName        string = "meal_plan"
-	MealPlanRecipesTableName string = "meal_plan_recipes"
-)
-
 type SqliteDatabaseContext struct {
 	sqliteDb *sql.DB
 }
