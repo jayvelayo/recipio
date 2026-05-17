@@ -86,11 +86,14 @@ func main() {
 	}
 
 	// Initialize database
-	cacheDir, err := os.UserCacheDir()
-	if err != nil {
-		log.Fatalf("unable to get user cache dir: %v", err)
+	dbPath := os.Getenv("RECIPIO_DB_PATH")
+	if dbPath == "" {
+		cacheDir, err := os.UserCacheDir()
+		if err != nil {
+			log.Fatalf("unable to get user cache dir: %v", err)
+		}
+		dbPath = filepath.Join(cacheDir, "recipio", "recipes.db")
 	}
-	dbPath := filepath.Join(cacheDir, "recipio", "recipes.db")
 	if err := os.MkdirAll(filepath.Dir(dbPath), 0755); err != nil {
 		log.Fatalf("unable to create cache dir: %v", err)
 	}
