@@ -17,6 +17,8 @@ func SetUpRoutes(
 	recipeDatabase rec.RecipeDatabase,
 	authDatabase authn.PasswordDatabase,
 	allowedOrigins []string,
+	googleDB authn.GoogleAuthDatabase,
+	googleCfg authn.GoogleOAuthConfig,
 ) {
 	setupSPAHandler(mux)
 
@@ -55,6 +57,12 @@ func SetUpRoutes(
 	mux.Handle("OPTIONS /auth/me", preflight)
 	mux.Handle("OPTIONS /auth/register", preflight)
 	mux.Handle("OPTIONS /auth/login", preflight)
+
+	// Google OAuth endpoints
+	mux.Handle("GET /auth/google", cors(handleGoogleLogin(googleCfg)))
+	mux.Handle("GET /auth/google/callback", cors(handleGoogleCallback(googleCfg, googleDB)))
+	mux.Handle("OPTIONS /auth/google", preflight)
+	mux.Handle("OPTIONS /auth/google/callback", preflight)
 
 	// Grocery list endpoints
 	mux.Handle("GET /grocery-list/{meal_plan_id}", protected(handleDesignGetGroceryList(recipeDatabase)))

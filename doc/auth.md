@@ -6,7 +6,11 @@
 2. OAuth2.0
 3. Passwordless (Email OTP)
 
-## General Flow
+## User Creation
+
+
+
+## General Flow - Validation
 
 The end goal of auth is always the same, create a session and store in database. 
 Everytime the client tries to access a protected API, it requires the session cookie.

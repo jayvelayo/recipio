@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 
+	"github.com/jayvelayo/recipio/internal/authn"
 	rec "github.com/jayvelayo/recipio/internal/recipes"
 )
 
@@ -36,7 +37,7 @@ const testUserID = "test-user-id"
 
 func createFakeServer(db rec.RecipeDatabase) http.Handler {
 	mux := http.NewServeMux()
-	SetUpRoutes(mux, db, nil, []string{})
+	SetUpRoutes(mux, db, nil, []string{}, nil, authn.GoogleOAuthConfig{})
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := context.WithValue(r.Context(), userIDKey, testUserID)
 		mux.ServeHTTP(w, r.WithContext(ctx))

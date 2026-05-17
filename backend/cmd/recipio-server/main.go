@@ -53,10 +53,12 @@ func loadEnvFile() error {
 func newServer(
 	recipeDatabase rec.RecipeDatabase,
 	authDatabase authn.PasswordDatabase,
+	googleDB authn.GoogleAuthDatabase,
+	googleCfg authn.GoogleOAuthConfig,
 	allowedOrigins []string,
 ) http.Handler {
 	mux := http.NewServeMux()
-	SetUpRoutes(mux, recipeDatabase, authDatabase, allowedOrigins)
+	SetUpRoutes(mux, recipeDatabase, authDatabase, allowedOrigins, googleDB, googleCfg)
 	return mux
 }
 
@@ -94,13 +96,29 @@ func main() {
 	if !ok {
 		log.Fatal("database does not implement authn.PasswordDatabase")
 	}
+	googleDb, _ := recipeDb.(authn.GoogleAuthDatabase)
+
+	googleClientID := os.Getenv("GOOGLE_CLIENT_ID")
+	googleClientSecret := os.Getenv("GOOGLE_CLIENT_SECRET")
+	if googleClientID == "" || googleClientSecret == "" {
+		log.Fatal("GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET must be set")
+	}
+	googleRedirectURI := os.Getenv("GOOGLE_REDIRECT_URI")
+	if googleRedirectURI == "" {
+		googleRedirectURI = "http://localhost:4002/auth/google/callback"
+	}
+	googleCfg := authn.GoogleOAuthConfig{
+		ClientID:     googleClientID,
+		ClientSecret: googleClientSecret,
+		RedirectURI:  googleRedirectURI,
+	}
 
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "4002"
 	}
 
-	srv := withLogging(newServer(recipeDb, authDb, allowedOrigins))
+	srv := withLogging(newServer(recipeDb, authDb, googleDb, googleCfg, allowedOrigins))
 	log.Printf("Starting server on :%s...", port)
 	if err := http.ListenAndServe(":"+port, srv); err != nil {
 		log.Fatalf("Could not start server: %s\n", err)

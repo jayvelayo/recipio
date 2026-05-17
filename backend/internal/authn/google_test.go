@@ -116,3 +116,56 @@ func TestVerifyGoogleID(t *testing.T) {
 		}
 	})
 }
+
+func TestFindOrCreateSession(t *testing.T) {
+	info := GoogleUserInfo{ID: "gid-123", Email: "carol@example.com", Name: "Carol"}
+
+	t.Run("Creates user and returns session on first call", func(t *testing.T) {
+		db := newMockGoogleAuthDatabase()
+		auth := GoogleAuthenticator{DB: db}
+
+		token, err := auth.FindOrCreateSession(info)
+		if err != nil {
+			t.Fatalf("Expected no error, got %v", err)
+		}
+		if token == "" {
+			t.Error("Expected a session token, got empty string")
+		}
+		userID, _ := db.GetUserIDByEmail("carol@example.com")
+		if userID == uuid.Nil {
+			t.Error("Expected user to be created in DB")
+		}
+	})
+
+	t.Run("Deduplicates: second call returns session without creating a new user", func(t *testing.T) {
+		db := newMockGoogleAuthDatabase()
+		auth := GoogleAuthenticator{DB: db}
+
+		auth.FindOrCreateSession(info)
+		userCountBefore := len(db.users)
+
+		token, err := auth.FindOrCreateSession(info)
+		if err != nil {
+			t.Fatalf("Expected no error on second call, got %v", err)
+		}
+		if token == "" {
+			t.Error("Expected a session token, got empty string")
+		}
+		if len(db.users) != userCountBefore {
+			t.Errorf("Expected no new user to be created, user count changed from %d to %d", userCountBefore, len(db.users))
+		}
+	})
+
+	t.Run("Returns error when email is already registered under a different Google ID", func(t *testing.T) {
+		db := newMockGoogleAuthDatabase()
+		auth := GoogleAuthenticator{DB: db}
+
+		auth.FindOrCreateSession(info)
+
+		duplicate := GoogleUserInfo{ID: "gid-different", Email: "carol@example.com", Name: "Carol"}
+		_, err := auth.FindOrCreateSession(duplicate)
+		if err == nil {
+			t.Error("Expected error for duplicate email, got nil")
+		}
+	})
+}

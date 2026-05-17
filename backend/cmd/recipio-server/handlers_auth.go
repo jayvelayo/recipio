@@ -1,11 +1,78 @@
 package main
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"net/http"
 	"strings"
 
 	"github.com/jayvelayo/recipio/internal/authn"
 )
+
+func generateState() (string, error) {
+	b := make([]byte, 16)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(b), nil
+}
+
+func handleGoogleLogin(cfg authn.GoogleOAuthConfig) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		state, err := generateState()
+		if err != nil {
+			http.Error(w, "Failed to initiate login", http.StatusInternalServerError)
+			return
+		}
+		http.SetCookie(w, &http.Cookie{
+			Name:     "google_oauth_state",
+			Value:    state,
+			MaxAge:   300,
+			HttpOnly: true,
+			SameSite: http.SameSiteLaxMode,
+		})
+		http.Redirect(w, r, cfg.GetAuthURL(state), http.StatusTemporaryRedirect)
+	})
+}
+
+func handleGoogleCallback(cfg authn.GoogleOAuthConfig, db authn.GoogleAuthDatabase) http.Handler {
+	auth := authn.GoogleAuthenticator{DB: db}
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		stateCookie, err := r.Cookie("google_oauth_state")
+		if err != nil || stateCookie.Value != r.URL.Query().Get("state") {
+			http.Error(w, "Invalid state parameter", http.StatusBadRequest)
+			return
+		}
+		http.SetCookie(w, &http.Cookie{
+			Name:   "google_oauth_state",
+			MaxAge: -1,
+		})
+
+		code := r.URL.Query().Get("code")
+		if code == "" {
+			http.Error(w, "Missing authorization code", http.StatusBadRequest)
+			return
+		}
+
+		userInfo, err := cfg.ExchangeCodeForUserInfo(r.Context(), code)
+		if err != nil {
+			http.Error(w, "Failed to authenticate with Google", http.StatusInternalServerError)
+			return
+		}
+
+		token, err := auth.FindOrCreateSession(userInfo)
+		if err != nil {
+			if strings.Contains(err.Error(), "already exists") {
+				http.Error(w, "An account with this email already exists. Please log in with your password.", http.StatusConflict)
+			} else {
+				http.Error(w, "Failed to create session", http.StatusInternalServerError)
+			}
+			return
+		}
+
+		http.Redirect(w, r, "/#google_token="+token, http.StatusTemporaryRedirect)
+	})
+}
 
 func handleGetUserInfo(authDB authn.PasswordDatabase) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

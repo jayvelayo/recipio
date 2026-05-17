@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { getUserInfo } from '/src/pages/common/auth_apis';
 
 const AuthContext = createContext(null);
 
@@ -18,6 +19,17 @@ export function AuthProvider({ children }) {
     setSession(null);
     localStorage.removeItem('session');
   };
+
+  // Handle the Google OAuth redirect: backend sends /#google_token=<session_token>
+  useEffect(() => {
+    const match = window.location.hash.match(/google_token=([^&]+)/);
+    if (!match) return;
+    const token = match[1];
+    window.history.replaceState(null, '', window.location.pathname + window.location.search);
+    getUserInfo(token)
+      .then(({ name, email }) => login(token, email, name))
+      .catch(() => {});
+  }, []);
 
   return (
     <AuthContext.Provider value={{ isAuthenticated: !!session, session, login, logout }}>
