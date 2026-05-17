@@ -1,6 +1,6 @@
 BIN_PATH := bin
 
-.PHONY: all backend frontend test run clean
+.PHONY: all backend frontend test run deploy deploy-down clean
 
 all: frontend backend
 	@echo ""
@@ -32,6 +32,12 @@ test:
 run:
 	@echo "Starting server at http://localhost:4002"
 	./$(BIN_PATH)/recipio-server
+
+deploy:
+	docker compose -f deploy/docker-compose.yml --env-file .env up -d --build
+
+deploy-down:
+	docker compose -f deploy/docker-compose.yml --env-file .env down
 
 clean:
 	rm -rf $(BIN_PATH)

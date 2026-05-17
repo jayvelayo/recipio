@@ -1,4 +1,6 @@
 .env
 bin/*
 deploy/bin/*
+deploy/certs/
+deploy/data/
 recipes.db

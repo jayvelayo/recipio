@@ -36,7 +36,7 @@ function Register({ onShowLogin }) {
             <div className="min-h-screen bg-gradient-to-br from-indigo-600 to-indigo-800 flex items-center justify-center p-4">
                 <div className="w-full max-w-md">
                     <div className="bg-white rounded-lg shadow-xl p-8 text-center">
-                        <h1 className="text-4xl font-bold text-indigo-600 mb-2">Recipio</h1>
+                        <h1 className="text-4xl font-bold text-indigo-600 mb-2">sarap.recipes</h1>
                         <p className="text-gray-700 font-medium mt-6 mb-2">Check your email</p>
                         <p className="text-gray-500 text-sm mb-6">We sent a verification link to <strong>{formData.email}</strong>. Click it to activate your account.</p>
                         <button
@@ -56,7 +56,7 @@ function Register({ onShowLogin }) {
             <div className="w-full max-w-md">
                 <div className="bg-white rounded-lg shadow-xl p-8">
                     <div className="text-center mb-8">
-                        <h1 className="text-4xl font-bold text-indigo-600 mb-2">Recipio</h1>
+                        <h1 className="text-4xl font-bold text-indigo-600 mb-2">sarap.recipes</h1>
                         <p className="text-gray-600">Create your account</p>
                     </div>
 

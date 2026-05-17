@@ -128,7 +128,7 @@ func main() {
 	}
 	emailFrom := os.Getenv("EMAIL_FROM")
 	if emailFrom == "" {
-		emailFrom = "Recipio <onboarding@resend.dev>"
+		emailFrom = "sarap.recipes <onboarding@resend.dev>"
 	}
 	emailSender := authn.EmailSender{
 		APIKey: resendAPIKey,

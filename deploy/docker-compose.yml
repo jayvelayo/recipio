@@ -2,28 +2,32 @@ version: '3.8'
 
 services:
   recipio:
-    build: .
-    ports:
-      - "4002:4002"
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    restart: unless-stopped
+    env_file: ../.env
     volumes:
-      # Mount the database file for persistence
       - ./data:/root/data
     environment:
       - RECIPIO_DB_PATH=/root/data/recipes.db
-    restart: unless-stopped
+    networks:
+      - traefik_proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.backend=recipio"
+      - "traefik.frontend.rule=Host:sarap.recipes"
+      - "traefik.port=4002"
+      - "traefik.docker.network=traefik_proxy"
+      - "traefik.frontend.headers.SSLRedirect=true"
+      - "traefik.frontend.headers.STSSeconds=315360000"
+      - "traefik.frontend.headers.browserXSSFilter=true"
+      - "traefik.frontend.headers.contentTypeNosniff=true"
+      - "traefik.frontend.headers.forceSTSHeader=true"
+      - "traefik.frontend.headers.STSIncludeSubdomains=true"
+      - "traefik.frontend.headers.STSPreload=true"
 
-# For production with external database, you could add:
-# services:
-#   db:
-#     image: sqlite3
-#     volumes:
-#       - ./data:/data
-#
-#   recipio:
-#     build: .
-#     ports:
-#       - "4002:4002"
-#     depends_on:
-#       - db
-#     environment:
-#       - RECIPIO_DB_PATH=/data/recipes.db
+networks:
+  traefik_proxy:
+    external:
+      name: traefik_proxy

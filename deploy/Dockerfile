@@ -9,16 +9,15 @@ COPY frontend/ ./
 RUN npm run build
 
 # Go build stage
-FROM golang:1.21-alpine AS backend-build
-
-WORKDIR /app
-COPY go.mod go.sum ./
-RUN go mod download
-
-COPY backend/ ./backend/
-COPY --from=frontend-build /app/dist ./backend/dist/
+FROM golang:1.26-alpine AS backend-build
 
 WORKDIR /app/backend
+COPY backend/go.mod backend/go.sum ./
+RUN go mod download
+
+COPY backend/ ./
+COPY --from=frontend-build /app/dist ./dist/
+
 RUN go build -o recipio-server ./cmd/recipio-server
 
 # Final stage

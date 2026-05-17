@@ -17,19 +17,37 @@ make dev
 
 ---
 
-## Docker Deployment
+## Docker Deployment (Home Server with SSL)
+
+Uses the existing Traefik reverse proxy on `traefik_proxy` network for SSL termination.
+SSL certs are managed by Traefik via Let's Encrypt + Cloudflare DNS challenge.
+
+### Prerequisites
+
+1. **DNS** — add an A record for `sarap.recipes` pointing to your home IP in Cloudflare.
+
+2. **Port forwarding** — forward port 443 on your router to the server.
+
+3. **Traefik** — ensure `sarap.recipes` is listed in `~/docker/traefik/traefik.toml` under `[[acme.domains]]` and restart Traefik to pick it up.
+
+4. **Google OAuth redirect URI** — add `https://sarap.recipes/auth/google/callback` as an authorized redirect URI in Google Cloud Console.
+
+5. **Environment variables** — copy `.env.example` to `.env` in the repo root and fill in:
+   ```
+   GOOGLE_CLIENT_ID=
+   GOOGLE_CLIENT_SECRET=
+   GOOGLE_REDIRECT_URI=https://sarap.recipes/auth/google/callback
+   APP_URL=https://sarap.recipes
+   ```
+
+### Run
 
 ```bash
-# Build
-docker build -f deploy/Dockerfile -t recipio .
-
-# Run
-docker run -p 4002:4002 recipio
-
-# With persistent data
-mkdir -p data
-docker-compose -f deploy/docker-compose.yml up -d
+make deploy        # build and start in background
+make deploy-down   # stop
 ```
+
+Logs: `docker compose -f deploy/docker-compose.yml --env-file .env logs -f`
 
 ---
 

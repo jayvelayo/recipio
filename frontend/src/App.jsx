@@ -74,7 +74,7 @@ function HeaderBar({ onMenuClick }) {
           >
             <FiMenu size={24} />
           </button>
-          <h1 className="text-3xl font-bold text-indigo-600">Recipio</h1>
+          <h1 className="text-3xl font-bold text-indigo-600">sarap.recipes</h1>
         </div>
         <UserInfoBox />
       </div>
@@ -149,7 +149,7 @@ function SidebarNavigation({ isOpen, onClose }) {
 export function HomePage() {
     return (
         <div>
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">Welcome to Recipio</h1>
+          <h1 className="text-4xl font-bold text-gray-900 mb-4">Welcome to sarap.recipes</h1>
           <p className="text-lg text-gray-600">Manage your recipes, meal plans, and grocery lists all in one place.</p>
         </div>
     )

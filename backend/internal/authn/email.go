@@ -18,7 +18,7 @@ func (s EmailSender) SendVerificationEmail(toEmail, name, rawToken string) error
 	body := map[string]any{
 		"from":    s.From,
 		"to":      []string{toEmail},
-		"subject": "Verify your Recipio email",
+		"subject": "Verify your sarap.recipes email",
 		"html": fmt.Sprintf(
 			`<p>Hi %s,</p><p>Click <a href="%s">here to verify your email address</a>.</p><p>This link expires in 24 hours.</p>`,
 			name, verifyURL,
