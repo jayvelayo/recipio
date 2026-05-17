@@ -36,6 +36,20 @@ export function createRecipe(newRecipe) {
   });
 }
 
+export function parseRecipeURL(url) {
+  return fetch('/parse-recipe-url', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ url }),
+  }).then(res => {
+    if (res.status === 429) throw new Error('RATE_LIMIT');
+    if (res.status === 504) throw new Error('TIMEOUT');
+    if (res.status === 502) throw new Error('FETCH_FAILED');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+  });
+}
+
 export function parseRecipe(rawRecipeText) {
   return fetch('/parse-recipe', {
     method: 'POST',

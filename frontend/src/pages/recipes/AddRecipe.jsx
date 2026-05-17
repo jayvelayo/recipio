@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { createRecipe, parseRecipe } from "./recipe_apis";
+import { createRecipe, parseRecipe, parseRecipeURL } from "./recipe_apis";
 import { useNavigate } from "react-router";
 import { FiArrowLeft } from 'react-icons/fi';
 import { parseIngredient } from '../../utils/parseIngredient';
@@ -30,8 +30,9 @@ export function AddRecipeForm() {
     tags: [],
   }
   const [recipe, setRecipe] = useState(blankRecipe);
-  const [useAI, setUseAI] = useState(false);
+  const [mode, setMode] = useState('manual'); // 'manual' | 'ai' | 'url'
   const [rawRecipeText, setRawRecipeText] = useState("");
+  const [recipeURL, setRecipeURL] = useState("");
   const [preview, setPreview] = useState(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState(null);
@@ -73,22 +74,23 @@ const handleFormChange = (e) => {
     });
   };
 
+  const applyParsedRecipe = (parsedRecipe) => {
+    const normalized = {
+      name: parsedRecipe.name || "",
+      ingredients: Array.isArray(parsedRecipe.ingredients) ? parsedRecipe.ingredients : [],
+      instructions: Array.isArray(parsedRecipe.instructions) ? parsedRecipe.instructions : [],
+      tags: recipe.tags,
+    };
+    setRecipe(normalized);
+    setPreview(normalized);
+  };
+
   const handlePreviewRecipe = async () => {
     setPreviewLoading(true);
     setPreviewError(null);
     setPreview(null);
-    
     try {
-      const parsedRecipe = await parseRecipe(rawRecipeText);
-      // Normalize the recipe structure
-      const normalizedRecipe = {
-        name: parsedRecipe.name || "",
-        ingredients: Array.isArray(parsedRecipe.ingredients) ? parsedRecipe.ingredients : [],
-        instructions: Array.isArray(parsedRecipe.instructions) ? parsedRecipe.instructions : [],
-        tags: recipe.tags,
-      };
-      setRecipe(normalizedRecipe);
-      setPreview(normalizedRecipe);
+      applyParsedRecipe(await parseRecipe(rawRecipeText));
     } catch (error) {
       if (error.message === 'TIMEOUT') {
         setPreviewError('Parsing timed out. Try reducing the amount of text and try again.');
@@ -100,13 +102,35 @@ const handleFormChange = (e) => {
     } finally {
       setPreviewLoading(false);
     }
-  }
+  };
+
+  const handlePreviewFromURL = async () => {
+    setPreviewLoading(true);
+    setPreviewError(null);
+    setPreview(null);
+    try {
+      applyParsedRecipe(await parseRecipeURL(recipeURL));
+    } catch (error) {
+      if (error.message === 'TIMEOUT') {
+        setPreviewError('Request timed out. The page may be too slow or large.');
+      } else if (error.message === 'RATE_LIMIT') {
+        setPreviewError('Too many requests. Please wait a moment before trying again.');
+      } else if (error.message === 'FETCH_FAILED') {
+        setPreviewError('Could not fetch the page. The site may be blocking requests or the URL is invalid.');
+      } else {
+        setPreviewError('Failed to extract recipe from URL. Try copying the recipe text and using the AI tab instead.');
+      }
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
 
   const handleUsePreview = () => {
-    setUseAI(false);
+    setMode('manual');
     setRawRecipeText("");
+    setRecipeURL("");
     setPreview(null);
-  }
+  };
 
   return (
     <div className="max-w-2xl mx-auto">
@@ -122,42 +146,31 @@ const handleFormChange = (e) => {
       </div>
 
       <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-8">
-        {/* AI Mode Toggle Button */}
-        <div className="mb-6 flex gap-3">
-          <button
-            onClick={() => {
-              setUseAI(false);
-              setRawRecipeText("");
-              setPreview(null);
-              setPreviewError(null);
-            }}
-            type="button"
-            className={`flex-1 font-medium py-2 rounded-lg transition ${
-              !useAI
-                ? 'bg-indigo-600 text-white'
-                : 'bg-gray-200 text-gray-900 hover:bg-gray-300'
-            }`}
-          >
-            Manual Entry
-          </button>
-          <button
-            onClick={() => {
-              setUseAI(true);
-              setRecipe(blankRecipe);
-            }}
-            type="button"
-            className={`flex-1 font-medium py-2 rounded-lg transition ${
-              useAI
-                ? 'bg-indigo-600 text-white'
-                : 'bg-gray-200 text-gray-900 hover:bg-gray-300'
-            }`}
-          >
-            Add Recipe using AI?
-          </button>
+        {/* Mode Toggle */}
+        <div className="mb-6 flex gap-2">
+          {[['manual', 'Manual'], ['ai', 'Paste Text (AI)'], ['url', 'From URL']].map(([m, label]) => (
+            <button
+              key={m}
+              onClick={() => {
+                setMode(m);
+                setPreview(null);
+                setPreviewError(null);
+                if (m !== 'manual') setRecipe(blankRecipe);
+              }}
+              type="button"
+              className={`flex-1 font-medium py-2 rounded-lg transition text-sm ${
+                mode === m
+                  ? 'bg-indigo-600 text-white'
+                  : 'bg-gray-200 text-gray-900 hover:bg-gray-300'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
         </div>
 
-        {/* AI Mode */}
-        {useAI ? (
+        {/* AI Mode: paste text */}
+        {mode === 'ai' && !preview && (
           <div className="space-y-6">
             <div>
               <label htmlFor="rawRecipeText" className="block text-sm font-medium text-gray-900 mb-2">
@@ -168,7 +181,7 @@ const handleFormChange = (e) => {
               </p>
               <textarea
                 id="rawRecipeText"
-                placeholder="Paste your recipe here... (e.g., '2 cups flour, 1 cup sugar, 2 eggs. Mix ingredients together. Bake at 350°F for 20 minutes.')"
+                placeholder="Paste your recipe here..."
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition font-mono text-sm"
                 value={rawRecipeText}
                 onChange={(e) => setRawRecipeText(sanitize(e.target.value).slice(0, 2000))}
@@ -179,33 +192,83 @@ const handleFormChange = (e) => {
                 {rawRecipeText.length} / 2000
               </p>
             </div>
+            <div className="space-y-2">
+              <button
+                onClick={handlePreviewRecipe}
+                disabled={previewLoading || !rawRecipeText.trim()}
+                type="button"
+                className="w-full bg-blue-600 text-white font-medium py-2 rounded-lg hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed transition"
+              >
+                {previewLoading ? 'Parsing Recipe...' : 'Preview Recipe'}
+              </button>
+              {previewLoading && (
+                <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                  <div className="bg-blue-500 h-2 rounded-full transition-all duration-300 ease-out" style={{ width: `${progress}%` }} />
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
-            {/* Preview Error */}
+        {/* URL Mode: paste URL */}
+        {mode === 'url' && !preview && (
+          <div className="space-y-6">
+            <div>
+              <label htmlFor="recipeURL" className="block text-sm font-medium text-gray-900 mb-2">
+                Recipe Page URL
+              </label>
+              <p className="text-xs text-gray-500 mb-2">
+                Paste the URL of a recipe page. The server will fetch it and extract the recipe text for AI parsing.
+              </p>
+              <input
+                id="recipeURL"
+                type="url"
+                placeholder="https://example.com/recipe/chocolate-chip-cookies"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition"
+                value={recipeURL}
+                onChange={(e) => setRecipeURL(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <button
+                onClick={handlePreviewFromURL}
+                disabled={previewLoading || !recipeURL.trim()}
+                type="button"
+                className="w-full bg-blue-600 text-white font-medium py-2 rounded-lg hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed transition"
+              >
+                {previewLoading ? 'Fetching & Parsing...' : 'Fetch & Parse Recipe'}
+              </button>
+              {previewLoading && (
+                <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                  <div className="bg-blue-500 h-2 rounded-full transition-all duration-300 ease-out" style={{ width: `${progress}%` }} />
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Shared preview area for AI and URL modes */}
+        {(mode === 'ai' || mode === 'url') && (
+          <div className="space-y-4">
             {previewError && (
               <div className="bg-red-50 border border-red-200 rounded-lg p-4">
                 <p className="text-sm text-red-700">{previewError}</p>
               </div>
             )}
-
-            {/* Preview */}
             {preview && (
               <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 space-y-4">
                 <h3 className="font-semibold text-gray-900">Recipe Preview</h3>
-
                 <div>
                   <p className="text-sm font-medium text-gray-700 mb-2">Recipe Name</p>
                   <p className="text-gray-900 font-medium">{preview.name || "(No name)"}</p>
                 </div>
-
                 <div>
                   <p className="text-sm font-medium text-gray-700 mb-2">Ingredients</p>
                   <ul className="space-y-1">
-                    {preview.ingredients && preview.ingredients.length > 0 ? (
+                    {preview.ingredients?.length > 0 ? (
                       preview.ingredients.map((ing, idx) => (
                         <li key={idx} className="flex items-baseline gap-2 text-sm">
-                          {ing.quantity && (
-                            <span className="italic text-gray-400 shrink-0">{ing.quantity}</span>
-                          )}
+                          {ing.quantity && <span className="italic text-gray-400 shrink-0">{ing.quantity}</span>}
                           <span className="text-gray-900">{ing.name}</span>
                         </li>
                       ))
@@ -214,11 +277,10 @@ const handleFormChange = (e) => {
                     )}
                   </ul>
                 </div>
-
                 <div>
                   <p className="text-sm font-medium text-gray-700 mb-2">Instructions</p>
                   <ol className="space-y-1">
-                    {preview.instructions && preview.instructions.length > 0 ? (
+                    {preview.instructions?.length > 0 ? (
                       preview.instructions.map((step, idx) => (
                         <li key={idx} className="text-gray-900 text-sm">{idx + 1}. {step}</li>
                       ))
@@ -227,60 +289,28 @@ const handleFormChange = (e) => {
                     )}
                   </ol>
                 </div>
-
                 <div className="flex gap-3 pt-4">
-                  <button
-                    onClick={handleUsePreview}
-                    type="button"
-                    className="flex-1 bg-indigo-600 text-white font-medium py-2 rounded-lg hover:bg-indigo-700 transition"
-                  >
+                  <button onClick={handleUsePreview} type="button" className="flex-1 bg-indigo-600 text-white font-medium py-2 rounded-lg hover:bg-indigo-700 transition">
                     Use This Recipe
                   </button>
-                  <button
-                    onClick={() => {
-                      setPreview(null);
-                      setPreviewError(null);
-                    }}
-                    type="button"
-                    className="flex-1 bg-gray-200 text-gray-900 font-medium py-2 rounded-lg hover:bg-gray-300 transition"
-                  >
+                  <button onClick={() => { setPreview(null); setPreviewError(null); }} type="button" className="flex-1 bg-gray-200 text-gray-900 font-medium py-2 rounded-lg hover:bg-gray-300 transition">
                     Back to Edit
                   </button>
                 </div>
               </div>
             )}
-
-            {/* Preview Button */}
-            {!preview && (
-              <div className="space-y-2">
-                <button
-                  onClick={handlePreviewRecipe}
-                  disabled={previewLoading || !rawRecipeText.trim()}
-                  type="button"
-                  className="w-full bg-blue-600 text-white font-medium py-2 rounded-lg hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed transition"
-                >
-                  {previewLoading ? 'Parsing Recipe...' : 'Preview Recipe'}
-                </button>
-                {previewLoading && (
-                  <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
-                    <div
-                      className="bg-blue-500 h-2 rounded-full transition-all duration-300 ease-out"
-                      style={{ width: `${progress}%` }}
-                    />
-                  </div>
-                )}
-              </div>
-            )}
           </div>
-        ) : (
-          /* Manual Mode Form */
+        )}
+
+        {/* Manual Mode Form */}
+        {mode === 'manual' && (
           <form onSubmit={addRecipeSubmitHandler} className="space-y-6">
             {/* Recipe Name */}
             <div>
               <label htmlFor="recipeName" className="block text-sm font-medium text-gray-900 mb-2">
                 Recipe Name
               </label>
-              <input 
+              <input
                 id="recipeName"
                 type="text"
                 placeholder="e.g., Chocolate Chip Cookies"
@@ -347,8 +377,8 @@ const handleFormChange = (e) => {
               >
                 {mutation.isPending ? 'Saving...' : 'Save Recipe'}
               </button>
-              <button 
-                onClick={() => navigate("/recipe")} 
+              <button
+                onClick={() => navigate("/recipe")}
                 type="button"
                 className="flex-1 bg-gray-200 text-gray-900 font-medium py-2 rounded-lg hover:bg-gray-300 transition"
               >

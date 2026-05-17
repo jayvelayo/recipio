@@ -45,9 +45,12 @@ func SetUpRoutes(
 	mux.Handle("OPTIONS /recipes", preflight)
 	mux.Handle("OPTIONS /recipes/{id}", preflight)
 
-	// AI parsing endpoint
-	mux.Handle("POST /parse-recipe", cors(handleDesignParseRecipe(rec.NewAIParser(os.Getenv("GROQ_API_KEY")))))
+	// AI parsing endpoints
+	aiParser := rec.NewAIParser(os.Getenv("GROQ_API_KEY"))
+	mux.Handle("POST /parse-recipe", cors(handleDesignParseRecipe(aiParser)))
+	mux.Handle("POST /parse-recipe-url", protected(handleDesignParseRecipeURL(aiParser)))
 	mux.Handle("OPTIONS /parse-recipe", preflight)
+	mux.Handle("OPTIONS /parse-recipe-url", preflight)
 
 	// Meal plan endpoints
 	mux.Handle("GET /meal-plans", protected(handleDesignGetAllMealPlans(recipeDatabase)))
