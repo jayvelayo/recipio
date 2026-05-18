@@ -63,4 +63,8 @@ describe('parseIngredient', () => {
   it('returns full line as name when no amount is present', () => {
     expect(parseIngredient('bay leaf')).toEqual({ quantity: '', name: 'bay leaf' });
   });
+
+  it('parses range amount', () => {
+    expect(parseIngredient('1-2 cups rice')).toEqual({ quantity: '1-2 cups', name: 'rice' });
+  });
 });
