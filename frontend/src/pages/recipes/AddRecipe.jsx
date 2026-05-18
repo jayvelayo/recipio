@@ -15,11 +15,11 @@ export function AddRecipeForm() {
 
   const mutation = useMutation({
     mutationFn: createRecipe,
-    onSuccess: (_, variables) => {
+    onSuccess: (data, variables) => {
       queryClient.invalidateQueries(['recipes']);
       toast.success(`"${variables.name}" added`);
       skipBlockRef.current = true;
-      navigate("/recipe");
+      navigate(`/recipe/view/${data.id}`);
     },
     onError: () => {
       toast.error('Failed to save recipe');
