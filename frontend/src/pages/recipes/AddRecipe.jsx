@@ -115,7 +115,7 @@ const handleFormChange = (e) => {
       name: parsedRecipe.name || "",
       ingredients: Array.isArray(parsedRecipe.ingredients) ? parsedRecipe.ingredients : [],
       instructions: Array.isArray(parsedRecipe.instructions) ? parsedRecipe.instructions : [],
-      tags: recipe.tags,
+      tags: Array.isArray(parsedRecipe.tags) ? parsedRecipe.tags : [],
       source_url: sourceURL,
     };
     setRecipe(normalized);

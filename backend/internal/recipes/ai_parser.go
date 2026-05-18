@@ -54,8 +54,12 @@ func (p AIParser) ParseRecipeText(text string) (Recipe, error) {
   "name": string,
   "description": string,
   "ingredients": [{"name": string, "quantity": string}],
-  "instructions": [string]
+  "instructions": [string],
+  "tags": [string]
 }
+
+For "tags", infer 1-3 short lowercase tags describing the cuisine or diet
+(e.g. "italian", "vegetarian", "thai", "gluten-free"). Omit if unclear.
 
 Recipe:
 %s
