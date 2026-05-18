@@ -141,7 +141,7 @@ describe('RecipeList', () => {
     await waitFor(() => screen.getAllByTitle('Delete recipe'))
     fireEvent.click(screen.getAllByTitle('Delete recipe')[0])
 
-    expect(window.confirm).toHaveBeenCalledWith('Are you sure you want to delete this recipe?')
+    expect(window.confirm).toHaveBeenCalledWith('Delete "French Toast"? This cannot be undone.')
     expect(apis.deleteRecipe).not.toHaveBeenCalled()
   })
 

@@ -180,7 +180,7 @@ export function GroceryList() {
                           : 'text-gray-900'
                       }`}
                     >
-                      {item.name}
+                      {item.quantity ? `${item.quantity} ${item.name}` : item.name}
                     </label>
                     {item.sources?.length > 0 && (
                       <div className="mt-0.5">
