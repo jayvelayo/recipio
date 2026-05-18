@@ -31,6 +31,7 @@ export function AddRecipeForm() {
     ingredients: [],
     instructions: [],
     tags: [],
+    source_url: "",
   }
   const [recipe, setRecipe] = useState(blankRecipe);
   const [mode, setMode] = useState('manual'); // 'manual' | 'ai' | 'url'
@@ -46,6 +47,7 @@ export function AddRecipeForm() {
     recipe.ingredients.some(i => (typeof i === 'string' ? i : i.name ?? '').trim()) ||
     recipe.instructions.some(Boolean) ||
     recipe.tags.length > 0 ||
+    recipe.source_url.trim() !== "" ||
     rawRecipeText.trim() !== "" ||
     recipeURL.trim() !== "";
 
@@ -104,15 +106,17 @@ const handleFormChange = (e) => {
       ),
       instructions: recipe.instructions.filter(Boolean),
       tags: recipe.tags,
+      source_url: recipe.source_url.trim(),
     });
   };
 
-  const applyParsedRecipe = (parsedRecipe) => {
+  const applyParsedRecipe = (parsedRecipe, sourceURL = "") => {
     const normalized = {
       name: parsedRecipe.name || "",
       ingredients: Array.isArray(parsedRecipe.ingredients) ? parsedRecipe.ingredients : [],
       instructions: Array.isArray(parsedRecipe.instructions) ? parsedRecipe.instructions : [],
       tags: recipe.tags,
+      source_url: sourceURL,
     };
     setRecipe(normalized);
     setPreview(normalized);
@@ -142,7 +146,7 @@ const handleFormChange = (e) => {
     setPreviewError(null);
     setPreview(null);
     try {
-      applyParsedRecipe(await parseRecipeURL(recipeURL));
+      applyParsedRecipe(await parseRecipeURL(recipeURL), recipeURL);
     } catch (error) {
       if (error.message === 'TIMEOUT') {
         setPreviewError('Request timed out. The page may be too slow or large.');
@@ -402,6 +406,21 @@ const handleFormChange = (e) => {
                 Tags <span className="text-gray-400 font-normal">(optional)</span>
               </label>
               <TagInput tags={recipe.tags} onChange={tags => setRecipe({ ...recipe, tags })} />
+            </div>
+
+            {/* Source URL */}
+            <div>
+              <label htmlFor="sourceURL" className="block text-sm font-medium text-gray-900 mb-2">
+                Source Link <span className="text-gray-400 font-normal">(optional)</span>
+              </label>
+              <input
+                id="sourceURL"
+                type="url"
+                placeholder="https://example.com/recipe/..."
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition"
+                value={recipe.source_url}
+                onChange={(e) => setRecipe({ ...recipe, source_url: e.target.value })}
+              />
             </div>
 
             {/* Form Actions */}

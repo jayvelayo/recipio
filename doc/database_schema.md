@@ -14,6 +14,7 @@ This document describes the database schema for **Recipio**, a recipe management
 | user_id      | text     | FOREIGN KEY references users(id)             | Owner of the recipe                |
 | name         | text     | NOT NULL                                     | Name of the recipe                 |
 | instruction  | text     | NOT NULL                                     | Cooking instructions (as text)     |
+| source_url   | text     |                                              | Original source link (optional)    |
 
 ### Table: `ingredients`
 
@@ -128,6 +129,7 @@ CREATE TABLE IF NOT EXISTS recipes (
     user_id TEXT,
     name TEXT NOT NULL,
     instruction TEXT NOT NULL,
+    source_url TEXT,
     FOREIGN KEY (user_id) REFERENCES users(id)
 );
 

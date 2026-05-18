@@ -14,6 +14,7 @@ type Recipe struct {
 	Ingredients  []Ingredient    `json:"ingredients"`
 	Instructions InstructionList `json:"instructions"`
 	Tags         []string        `json:"tags"`
+	SourceURL    string          `json:"source_url,omitempty"`
 }
 
 type Recipes []Recipe

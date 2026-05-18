@@ -3,6 +3,7 @@ CREATE TABLE IF NOT EXISTS recipes (
     user_id TEXT,
     name TEXT NOT NULL,
     instruction TEXT NOT NULL,
+    source_url TEXT,
     FOREIGN KEY (user_id) REFERENCES users(id)
 );
 

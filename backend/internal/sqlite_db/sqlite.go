@@ -79,6 +79,13 @@ var dbMigrations = []migration{
 		}
 		return nil
 	}},
+	{4, func(db *sql.DB) error {
+		_, err := db.Exec(`ALTER TABLE recipes ADD COLUMN source_url TEXT`)
+		if err != nil && !strings.Contains(err.Error(), "duplicate column name") {
+			return err
+		}
+		return nil
+	}},
 }
 
 func runMigrations(db *sql.DB) error {
