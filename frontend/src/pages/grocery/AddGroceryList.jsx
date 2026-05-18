@@ -49,8 +49,9 @@ export function AddGroceryList() {
     } else if (creationType === 'from-mealplan' && mealPlanIngredients) {
       items = mealPlanIngredients.map(ing => ({
         name: ing.name,
-        quantity: ing.quantity || '',
+        quantity: '',
         checked: false,
+        sources: ing.sources || [],
       }));
     }
 
@@ -212,8 +213,13 @@ export function AddGroceryList() {
                   <p className="text-sm font-medium text-gray-900 mb-3">Items that will be added:</p>
                   <ul className="space-y-2">
                     {mealPlanIngredients.map((ing, index) => (
-                      <li key={index} className="text-sm text-gray-700">
-                        • {[ing.quantity, ing.name].filter(Boolean).join(' ')}
+                      <li key={index}>
+                        <span className="text-sm text-gray-700">• {ing.name}</span>
+                        {ing.sources?.map((src, i) => (
+                          <p key={i} className="text-xs text-gray-500 ml-3">
+                            {[src.recipe_name, src.quantity].filter(Boolean).join(' — ')}
+                          </p>
+                        ))}
                       </li>
                     ))}
                   </ul>

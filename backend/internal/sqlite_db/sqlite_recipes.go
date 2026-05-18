@@ -2,6 +2,7 @@ package sqlite_db
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -391,47 +392,79 @@ func (ctx *SqliteDatabaseContext) GetAllMealPlans(userID string) ([]rec.MealPlan
 	return plans, nil
 }
 
-func (ctx *SqliteDatabaseContext) GetGroceryList(mealPlanID string) ([]rec.Ingredient, error) {
+func (ctx *SqliteDatabaseContext) GetGroceryList(mealPlanID string) ([]rec.GroceryListItem, error) {
 	db := ctx.sqliteDb
 	planID, err := strconv.ParseInt(mealPlanID, 10, 64)
 	if err != nil || planID < 1 {
 		return nil, fmt.Errorf("invalid meal plan id: %s", mealPlanID)
 	}
 
-	rows, err := db.Query("SELECT recipe_id FROM meal_plan_recipes WHERE meal_plan_id = ?", planID)
+	rows, err := db.Query(
+		"SELECT r.id, r.name FROM meal_plan_recipes mpr JOIN recipes r ON r.id = mpr.recipe_id WHERE mpr.meal_plan_id = ?",
+		planID,
+	)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var recipeIDs []string
+	type recipeInfo struct {
+		id   string
+		name string
+	}
+	var recipes []recipeInfo
 	for rows.Next() {
-		var rid string
-		if err := rows.Scan(&rid); err != nil {
+		var ri recipeInfo
+		if err := rows.Scan(&ri.id, &ri.name); err != nil {
 			return nil, err
 		}
-		recipeIDs = append(recipeIDs, rid)
+		recipes = append(recipes, ri)
 	}
 
-	var ingredients []rec.Ingredient
-	for _, rid := range recipeIDs {
-		ingRows, err := db.Query("SELECT name, quantity FROM ingredients WHERE recipe_id = ?", rid)
+	type group struct {
+		name    string
+		sources []rec.IngredientSource
+	}
+	groups := make(map[string]*group)
+	var order []string
+
+	for _, r := range recipes {
+		ingRows, err := db.Query("SELECT name, quantity FROM ingredients WHERE recipe_id = ?", r.id)
 		if err != nil {
 			return nil, err
 		}
 		for ingRows.Next() {
-			var ing rec.Ingredient
-			if err := ingRows.Scan(&ing.Name, &ing.Quantity); err != nil {
+			var name, qty string
+			if err := ingRows.Scan(&name, &qty); err != nil {
 				ingRows.Close()
 				return nil, err
 			}
-			if ing.Name != "" {
-				ingredients = append(ingredients, ing)
+			if name == "" {
+				continue
 			}
+			key := strings.ToLower(strings.TrimSpace(name))
+			if _, exists := groups[key]; !exists {
+				groups[key] = &group{name: name}
+				order = append(order, key)
+			}
+			groups[key].sources = append(groups[key].sources, rec.IngredientSource{
+				Quantity:   qty,
+				RecipeName: r.name,
+			})
 		}
 		ingRows.Close()
 	}
-	return rec.ConsolidateIngredients(ingredients), nil
+
+	result := make([]rec.GroceryListItem, 0, len(order))
+	for _, key := range order {
+		g := groups[key]
+		result = append(result, rec.GroceryListItem{
+			Name:    g.name,
+			Checked: false,
+			Sources: g.sources,
+		})
+	}
+	return result, nil
 }
 
 func (ctx *SqliteDatabaseContext) DeleteMealPlan(mealPlanID string) error {
@@ -490,14 +523,15 @@ func (ctx *SqliteDatabaseContext) CreateGroceryList(userID string, name string, 
 		return "", fmt.Errorf("failed to get grocery list id: %w", err)
 	}
 
-	stmt, err := tx.Prepare("INSERT INTO grocery_list_items (grocery_list_id, name, quantity, checked) VALUES (?, ?, ?, ?)")
+	stmt, err := tx.Prepare("INSERT INTO grocery_list_items (grocery_list_id, name, quantity, checked, sources) VALUES (?, ?, ?, ?, ?)")
 	if err != nil {
 		return "", fmt.Errorf("failed to prepare item insert: %w", err)
 	}
 	defer stmt.Close()
 
 	for _, item := range items {
-		if _, err = stmt.Exec(listID, item.Name, item.Quantity, item.Checked); err != nil {
+		sourcesJSON, _ := json.Marshal(item.Sources)
+		if _, err = stmt.Exec(listID, item.Name, item.Quantity, item.Checked, string(sourcesJSON)); err != nil {
 			return "", fmt.Errorf("failed to insert item: %w", err)
 		}
 	}
@@ -539,7 +573,7 @@ func (ctx *SqliteDatabaseContext) GetAllGroceryLists(userID string) ([]rec.Groce
 
 func (ctx *SqliteDatabaseContext) getGroceryListItems(listID string) ([]rec.GroceryListItem, error) {
 	db := ctx.sqliteDb
-	rows, err := db.Query("SELECT name, quantity, checked FROM grocery_list_items WHERE grocery_list_id = ? ORDER BY id", listID)
+	rows, err := db.Query("SELECT name, quantity, checked, sources FROM grocery_list_items WHERE grocery_list_id = ? ORDER BY id", listID)
 	if err != nil {
 		return nil, err
 	}
@@ -548,8 +582,12 @@ func (ctx *SqliteDatabaseContext) getGroceryListItems(listID string) ([]rec.Groc
 	var items []rec.GroceryListItem
 	for rows.Next() {
 		var item rec.GroceryListItem
-		if err := rows.Scan(&item.Name, &item.Quantity, &item.Checked); err != nil {
+		var sourcesJSON sql.NullString
+		if err := rows.Scan(&item.Name, &item.Quantity, &item.Checked, &sourcesJSON); err != nil {
 			return nil, err
+		}
+		if sourcesJSON.Valid && sourcesJSON.String != "" {
+			_ = json.Unmarshal([]byte(sourcesJSON.String), &item.Sources)
 		}
 		items = append(items, item)
 	}
@@ -589,14 +627,15 @@ func (ctx *SqliteDatabaseContext) UpdateGroceryList(id string, items []rec.Groce
 		return fmt.Errorf("failed to delete existing items: %w", err)
 	}
 
-	stmt, err := tx.Prepare("INSERT INTO grocery_list_items (grocery_list_id, name, quantity, checked) VALUES (?, ?, ?, ?)")
+	stmt, err := tx.Prepare("INSERT INTO grocery_list_items (grocery_list_id, name, quantity, checked, sources) VALUES (?, ?, ?, ?, ?)")
 	if err != nil {
 		return fmt.Errorf("failed to prepare item insert: %w", err)
 	}
 	defer stmt.Close()
 
 	for _, item := range items {
-		if _, err = stmt.Exec(id, item.Name, item.Quantity, item.Checked); err != nil {
+		sourcesJSON, _ := json.Marshal(item.Sources)
+		if _, err = stmt.Exec(id, item.Name, item.Quantity, item.Checked, string(sourcesJSON)); err != nil {
 			return fmt.Errorf("failed to insert item: %w", err)
 		}
 	}

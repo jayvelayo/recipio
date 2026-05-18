@@ -180,8 +180,22 @@ export function GroceryList() {
                           : 'text-gray-900'
                       }`}
                     >
-                      {item.quantity ? `${item.quantity} ${item.name}` : item.name}
+                      {item.name}
                     </label>
+                    {item.sources?.length > 0 && (
+                      <div className="mt-0.5">
+                        {item.sources.map((src, i) => (
+                          <p
+                            key={i}
+                            className={`text-xs transition-all duration-200 ${
+                              item.checked ? 'line-through text-gray-300' : 'text-gray-400'
+                            }`}
+                          >
+                            {[src.recipe_name, src.quantity].filter(Boolean).join(' — ')}
+                          </p>
+                        ))}
+                      </div>
+                    )}
                   </div>
                   <button
                     className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"

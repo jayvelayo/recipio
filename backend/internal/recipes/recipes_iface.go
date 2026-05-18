@@ -10,7 +10,7 @@ type RecipeDatabase interface {
 	CreateMealPlan(userID string, recipeIDs []string) (mealPlanID string, err error)
 	AddRecipesToMealPlan(mealPlanID string, recipeIDs []string) error
 	GetAllMealPlans(userID string) ([]MealPlanSummary, error)
-	GetGroceryList(mealPlanID string) ([]Ingredient, error)
+	GetGroceryList(mealPlanID string) ([]GroceryListItem, error)
 	DeleteMealPlan(mealPlanID string) error
 	CreateGroceryList(userID string, name string, items []GroceryListItem, mealPlanID *string) (string, error)
 	GetAllGroceryLists(userID string) ([]GroceryList, error)

@@ -23,10 +23,16 @@ type MealPlanSummary struct {
 	RecipeNames []string `json:"recipe_names"`
 }
 
+type IngredientSource struct {
+	Quantity   string `json:"quantity"`
+	RecipeName string `json:"recipe_name"`
+}
+
 type GroceryListItem struct {
-	Name     string `json:"name"`
-	Quantity string `json:"quantity"`
-	Checked  bool   `json:"checked"`
+	Name     string             `json:"name"`
+	Quantity string             `json:"quantity"`
+	Checked  bool               `json:"checked"`
+	Sources  []IngredientSource `json:"sources,omitempty"`
 }
 
 type GroceryList struct {

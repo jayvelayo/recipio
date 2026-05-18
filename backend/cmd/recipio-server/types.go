@@ -19,7 +19,7 @@ type CreateMealPlanResponse struct {
 }
 
 type GroceryListResponse struct {
-	Ingredients []rec.Ingredient `json:"ingredients"`
+	Ingredients []rec.GroceryListItem `json:"ingredients"`
 }
 
 type CreateGroceryListRequest struct {
