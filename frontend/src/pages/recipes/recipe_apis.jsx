@@ -25,6 +25,7 @@ export function createRecipe(newRecipe) {
     ingredients: Array.isArray(newRecipe.ingredients) ? newRecipe.ingredients : [],
     instructions: Array.isArray(newRecipe.instructions) ? newRecipe.instructions : [],
     tags: Array.isArray(newRecipe.tags) ? newRecipe.tags : [],
+    source_url: newRecipe.source_url ?? '',
   };
   return fetch('/recipes', {
     method: 'POST',

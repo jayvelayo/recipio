@@ -15,6 +15,7 @@ This document describes the database schema for **Recipio**, a recipe management
 | name         | text     | NOT NULL                                     | Name of the recipe                 |
 | instruction  | text     | NOT NULL                                     | Cooking instructions (as text)     |
 | source_url   | text     |                                              | Original source link (optional)    |
+| is_favourite | boolean  | NOT NULL, DEFAULT FALSE                      | Whether the recipe is favourited   |
 
 ### Table: `ingredients`
 
@@ -130,6 +131,7 @@ CREATE TABLE IF NOT EXISTS recipes (
     name TEXT NOT NULL,
     instruction TEXT NOT NULL,
     source_url TEXT,
+    is_favourite BOOLEAN NOT NULL DEFAULT FALSE,
     FOREIGN KEY (user_id) REFERENCES users(id)
 );
 

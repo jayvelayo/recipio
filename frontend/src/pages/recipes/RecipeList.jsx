@@ -165,7 +165,7 @@ function AddTagsModal({ selectedIds, recipes, onClose, onSuccess }) {
   );
 }
 
-function RecipeRowPreview({ recipe, selected, onToggle, onToggleFavourite }) {
+function RecipeRowPreview({ recipe, selected, onToggle, onToggleFavourite, onDelete }) {
   return (
     <div className={`flex items-center gap-3 p-4 border-b border-gray-200 hover:bg-gray-50 transition ${selected ? 'bg-indigo-50 hover:bg-indigo-50' : ''}`}>
       <input
@@ -188,6 +188,13 @@ function RecipeRowPreview({ recipe, selected, onToggle, onToggleFavourite }) {
           size={16}
           className={recipe.is_favourite ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'}
         />
+      </button>
+      <button
+        onClick={e => { e.stopPropagation(); onDelete(recipe); }}
+        className="p-1.5 rounded-lg hover:bg-red-50 text-gray-300 hover:text-red-500 transition shrink-0"
+        title="Delete recipe"
+      >
+        <FiTrash2 size={16} />
       </button>
     </div>
   );
@@ -324,6 +331,11 @@ function RecipeListRows({ recipes }) {
     deleteMutation.mutate(ids);
   };
 
+  const handleDeleteSingle = (recipe) => {
+    if (!window.confirm(`Delete "${recipe.name}"? This cannot be undone.`)) return;
+    deleteMutation.mutate([recipe.id]);
+  };
+
   const handleNewMealPlan = () => {
     createMealPlanMutation.mutate(Array.from(selectedIds));
   };
@@ -408,6 +420,7 @@ function RecipeListRows({ recipes }) {
                 selected={selectedIds.has(recipe.id)}
                 onToggle={() => toggleSelect(recipe.id)}
                 onToggleFavourite={handleToggleFavourite}
+                onDelete={handleDeleteSingle}
               />
             </motion.div>
           ))

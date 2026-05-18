@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { useParams } from "react-router";
+import { useParams, useNavigate } from "react-router";
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getRecipeId, updateRecipe } from "./recipe_apis";
+import { getRecipeId, updateRecipe, deleteRecipe } from "./recipe_apis";
 import { Link } from "react-router";
 import LoadingPage from '/src/pages/common/LoadingPage'
-import { FiArrowLeft, FiEdit2, FiCheck, FiX, FiStar } from 'react-icons/fi';
+import { FiArrowLeft, FiEdit2, FiCheck, FiX, FiStar, FiTrash2 } from 'react-icons/fi';
 import { parseIngredient } from '../../utils/parseIngredient';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
@@ -29,6 +29,7 @@ export function ViewRecipe() {
   const param = useParams()
   const id = param.uid
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   const { data, isLoading, isError, error } = useQuery({
       queryKey: ['recipes', id],
@@ -40,6 +41,7 @@ export function ViewRecipe() {
   const [editIngredients, setEditIngredients] = useState('');
   const [editInstructions, setEditInstructions] = useState('');
   const [editTags, setEditTags] = useState([]);
+  const [editSourceUrl, setEditSourceUrl] = useState('');
 
   const mutation = useMutation({
     mutationFn: updateRecipe,
@@ -63,6 +65,21 @@ export function ViewRecipe() {
     onError: () => toast.error('Failed to update favourite'),
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: () => deleteRecipe(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['recipes']);
+      toast.success('Recipe deleted');
+      navigate('/recipe');
+    },
+    onError: () => toast.error('Failed to delete recipe'),
+  });
+
+  const handleDelete = () => {
+    if (!window.confirm(`Delete "${data?.name}"? This cannot be undone.`)) return;
+    deleteMutation.mutate();
+  };
+
   if (isLoading) return <LoadingPage />
   if (isError) return <p className="text-red-600">Error: {error.message}</p>
 
@@ -75,6 +92,7 @@ export function ViewRecipe() {
     setEditIngredients(ingredientsToText(ingredients));
     setEditInstructions(steps.join('\n'));
     setEditTags(recipe.tags ?? []);
+    setEditSourceUrl(recipe.source_url ?? '');
     setIsEditing(true);
   };
 
@@ -91,7 +109,7 @@ export function ViewRecipe() {
         ingredients: editIngredients.split(/\r?\n/).filter(Boolean).map(parseIngredient),
         instructions: editInstructions.split(/\r?\n/).filter(Boolean),
         tags: editTags,
-        source_url: recipe.source_url,
+        source_url: editSourceUrl.trim(),
         is_favourite: recipe.is_favourite,
       },
     });
@@ -175,6 +193,19 @@ export function ViewRecipe() {
               <TagInput tags={editTags} onChange={setEditTags} />
             </div>
 
+            <div>
+              <label className="block text-sm font-medium text-gray-900 mb-2">
+                Source Link <span className="text-gray-400 font-normal">(optional)</span>
+              </label>
+              <input
+                type="url"
+                placeholder="https://example.com/recipe/..."
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition"
+                value={editSourceUrl}
+                onChange={e => setEditSourceUrl(e.target.value)}
+              />
+            </div>
+
             <div className="flex gap-3 pt-4">
               <button
                 type="submit"
@@ -247,6 +278,14 @@ export function ViewRecipe() {
           />
         </button>
         <button
+          onClick={handleDelete}
+          disabled={deleteMutation.isPending}
+          className="p-2 hover:bg-red-50 text-gray-400 hover:text-red-500 rounded-lg transition"
+          title="Delete recipe"
+        >
+          <FiTrash2 size={22} />
+        </button>
+        <button
           onClick={handleStartEdit}
           className="p-2 hover:bg-gray-100 rounded-lg transition"
           title="Edit recipe"
@@ -257,8 +296,22 @@ export function ViewRecipe() {
 
       {/* Tags */}
       {listTags && (
-        <div className="mb-8">
+        <div className="mb-4">
           {listTags}
+        </div>
+      )}
+
+      {/* Source URL */}
+      {recipe.source_url && (
+        <div className="mb-8">
+          <a
+            href={recipe.source_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm text-indigo-600 hover:text-indigo-800 hover:underline break-all"
+          >
+            {recipe.source_url}
+          </a>
         </div>
       )}
 
