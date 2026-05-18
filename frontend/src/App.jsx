@@ -136,11 +136,12 @@ function SidebarNavigation({ isOpen, onClose }) {
         fixed lg:static inset-y-0 left-0 z-40 w-64 bg-white border-r border-gray-200
         transform transition-transform duration-300 ease-in-out
         ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
-        overflow-y-auto pt-4
+        flex flex-col overflow-y-auto pt-4
       `}>
-        <div className="px-3 space-y-2">
+        <div className="px-3 space-y-2 flex-1">
           {sidebarLinks.map(createNavigationLink)}
         </div>
+        <p className="px-4 pb-4 text-xs text-gray-400">Built by Jayvee Velayo</p>
       </nav>
     </>
   )

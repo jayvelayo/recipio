@@ -139,6 +139,7 @@ function Login({ onShowRegister }) {
                         </button>
                     </p>
                 </div>
+                <p className="text-center text-xs text-indigo-300 mt-4">Built by Jayvee Velayo</p>
             </div>
         </div>
     );
