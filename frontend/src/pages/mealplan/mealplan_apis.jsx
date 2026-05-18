@@ -31,6 +31,16 @@ export function getGroceryList(mealPlanId) {
     .then((data) => (data.ingredients || []));
 }
 
+export function addRecipesToMealPlan(mealPlanId, recipeIds) {
+  return fetch(`/meal-plans/${mealPlanId}/recipes`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ recipes: recipeIds }),
+  }).then((res) => {
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  });
+}
+
 export function deleteMealPlan(mealPlanId) {
   return fetch(`/meal-plans/${mealPlanId}`, { method: 'DELETE', headers: authHeaders() })
     .then((res) => {

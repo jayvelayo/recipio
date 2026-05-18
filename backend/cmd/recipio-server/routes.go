@@ -55,9 +55,11 @@ func SetUpRoutes(
 	// Meal plan endpoints
 	mux.Handle("GET /meal-plans", protected(handleDesignGetAllMealPlans(recipeDatabase)))
 	mux.Handle("POST /meal-plans", protected(handleDesignCreateMealPlan(recipeDatabase)))
+	mux.Handle("POST /meal-plans/{meal_plan_id}/recipes", protected(handleDesignAddRecipesToMealPlan(recipeDatabase)))
 	mux.Handle("DELETE /meal-plans/{meal_plan_id}", protected(handleDesignDeleteMealPlan(recipeDatabase)))
 	mux.Handle("OPTIONS /meal-plans", preflight)
 	mux.Handle("OPTIONS /meal-plans/{meal_plan_id}", preflight)
+	mux.Handle("OPTIONS /meal-plans/{meal_plan_id}/recipes", preflight)
 
 	// Auth endpoints
 	mux.Handle("GET /auth/me", cors(handleGetUserInfo(authDatabase)))

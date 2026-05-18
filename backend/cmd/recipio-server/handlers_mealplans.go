@@ -43,6 +43,30 @@ func handleDesignCreateMealPlan(recipeDb rec.RecipeDatabase) http.Handler {
 	})
 }
 
+func handleDesignAddRecipesToMealPlan(recipeDb rec.RecipeDatabase) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Content-Type") != "application/json" {
+			http.Error(w, "Content-Type must be application/json", http.StatusUnsupportedMediaType)
+			return
+		}
+		mealPlanID := r.PathValue("meal_plan_id")
+		if mealPlanID == "" {
+			http.Error(w, "Missing meal plan id", http.StatusBadRequest)
+			return
+		}
+		var body CreateMealPlanRequest
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			http.Error(w, "Invalid JSON body", http.StatusBadRequest)
+			return
+		}
+		if err := recipeDb.AddRecipesToMealPlan(mealPlanID, body.Recipes); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	})
+}
+
 func handleDesignDeleteMealPlan(recipeDb rec.RecipeDatabase) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		mealPlanID := r.PathValue("meal_plan_id")

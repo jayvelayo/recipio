@@ -278,6 +278,40 @@ func (ctx *SqliteDatabaseContext) AddRecipeToMealPlan(id string) error {
 	return nil
 }
 
+func (ctx *SqliteDatabaseContext) AddRecipesToMealPlan(mealPlanID string, recipeIDs []string) error {
+	db := ctx.sqliteDb
+	planID, err := strconv.ParseInt(mealPlanID, 10, 64)
+	if err != nil || planID < 1 {
+		return fmt.Errorf("invalid meal plan id: %s", mealPlanID)
+	}
+
+	tx, err := db.Begin()
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	stmt, err := tx.Prepare("INSERT OR IGNORE INTO meal_plan_recipes (meal_plan_id, recipe_id) VALUES (?, ?)")
+	if err != nil {
+		return fmt.Errorf("failed to prepare insert: %w", err)
+	}
+	defer stmt.Close()
+
+	for _, id := range recipeIDs {
+		if id = strings.TrimSpace(id); id == "" {
+			continue
+		}
+		if _, err = stmt.Exec(planID, id); err != nil {
+			return fmt.Errorf("failed to add recipe %s: %w", id, err)
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit: %w", err)
+	}
+	return nil
+}
+
 func (ctx *SqliteDatabaseContext) CreateMealPlan(userID string, recipeIDs []string) (string, error) {
 	db := ctx.sqliteDb
 	tx, err := db.Begin()

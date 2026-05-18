@@ -58,6 +58,16 @@ func (db *MockRecipeDatabase) CreateMealPlan(userID string, recipeIDs []string) 
 	return id, nil
 }
 
+func (db *MockRecipeDatabase) AddRecipesToMealPlan(mealPlanID string, recipeIDs []string) error {
+	for _, plan := range db.mealPlans {
+		if plan.ID == mealPlanID {
+			plan.RecipeNames = append(plan.RecipeNames, recipeIDs...)
+			return nil
+		}
+	}
+	return fmt.Errorf("meal plan not found")
+}
+
 func (db *MockRecipeDatabase) GetAllMealPlans(userID string) ([]MealPlanSummary, error) {
 	return db.mealPlans, nil
 }

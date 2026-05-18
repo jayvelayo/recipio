@@ -8,6 +8,7 @@ type RecipeDatabase interface {
 	DeleteRecipe(id string) error
 	AddRecipeToMealPlan(id string) error
 	CreateMealPlan(userID string, recipeIDs []string) (mealPlanID string, err error)
+	AddRecipesToMealPlan(mealPlanID string, recipeIDs []string) error
 	GetAllMealPlans(userID string) ([]MealPlanSummary, error)
 	GetGroceryList(mealPlanID string) ([]Ingredient, error)
 	DeleteMealPlan(mealPlanID string) error
