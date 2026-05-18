@@ -69,3 +69,12 @@ make run   # starts the server at http://localhost:4002
 ```
 
 See `deploy/DEPLOYMENT.md` for deployment options including Docker and cloud platforms.
+
+# Roadmap
+Future work
+
+[ ] Add RBAC for future features
+[ ] Admin page to manage users
+[ ] Admin page for stats
+[ ] Better UI styling
+[ ] Implement Playwright for E2E testing

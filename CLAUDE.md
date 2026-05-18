@@ -71,3 +71,4 @@ Tailwind CSS with indigo as the primary color and pink as the accent. `tailwind.
 - Write integration tests for new handlers using `httptest` and the mock DB.
 - Do not add new files outside the established directory structure.
 - Write for maintainability over cleverness; reduce code duplication.
+- When changing the DB schema (`internal/sqlite_db/schema.tmpl`), update `doc/database_schema.md` to match.
