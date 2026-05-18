@@ -23,7 +23,7 @@ RUN go build -o recipio-server ./cmd/recipio-server
 # Final stage
 FROM alpine:latest
 
-RUN apk --no-cache add ca-certificates sqlite
+RUN apk --no-cache add ca-certificates sqlite bash
 
 WORKDIR /root/
 
