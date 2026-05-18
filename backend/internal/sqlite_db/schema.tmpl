@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS recipes (
     instruction TEXT NOT NULL,
     source_url TEXT,
     is_favourite BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TEXT,
     FOREIGN KEY (user_id) REFERENCES users(id)
 );
 

@@ -93,6 +93,14 @@ var dbMigrations = []migration{
 		}
 		return nil
 	}},
+	{6, func(db *sql.DB) error {
+		_, err := db.Exec(`ALTER TABLE recipes ADD COLUMN created_at TEXT`)
+		if err != nil && !strings.Contains(err.Error(), "duplicate column name") {
+			return err
+		}
+		_, err = db.Exec(`UPDATE recipes SET created_at = datetime('now') WHERE created_at IS NULL`)
+		return err
+	}},
 }
 
 func runMigrations(db *sql.DB) error {

@@ -294,6 +294,13 @@ export function ViewRecipe() {
         </button>
       </div>
 
+      {/* Created date */}
+      {recipe.created_at && (
+        <p className="text-sm text-gray-400 mb-4">
+          Added {new Date(recipe.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+        </p>
+      )}
+
       {/* Tags */}
       {listTags && (
         <div className="mb-4">

@@ -16,6 +16,7 @@ type Recipe struct {
 	Tags         []string        `json:"tags"`
 	SourceURL    string          `json:"source_url,omitempty"`
 	IsFavourite  bool            `json:"is_favourite"`
+	CreatedAt    string          `json:"created_at,omitempty"`
 }
 
 type Recipes []Recipe
