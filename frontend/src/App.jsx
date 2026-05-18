@@ -3,6 +3,7 @@ import { RouterProvider, NavLink, Outlet, useLocation } from 'react-router'
 import { router, sidebarLinks} from './routes.jsx'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useState } from 'react';
+import { useRecentlyViewed } from './utils/recentlyViewed';
 import Login from '/src/pages/common/Login';
 import Register from '/src/pages/common/Register';
 import { AuthProvider, useAuth } from '/src/pages/common/AuthContext';
@@ -120,17 +121,44 @@ function createNavigationLink({label, dst}, index) {
   )
 }
 
+function RecentlyViewedNav() {
+  const recent = useRecentlyViewed();
+  if (recent.length === 0) return null;
+  return (
+    <div className="px-3 pt-4 mt-2 border-t border-gray-100">
+      <p className="px-4 mb-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">
+        Recently Viewed
+      </p>
+      {recent.slice(0, 5).map(r => (
+        <NavLink
+          key={r.id}
+          to={`/recipe/view/${r.id}`}
+          className={({ isActive }) => `
+            block px-4 py-2 text-sm transition-colors rounded-lg truncate
+            ${isActive
+              ? 'bg-indigo-50 text-indigo-600'
+              : 'text-gray-600 hover:bg-gray-100'
+            }
+          `}
+        >
+          {r.name}
+        </NavLink>
+      ))}
+    </div>
+  );
+}
+
 function SidebarNavigation({ isOpen, onClose }) {
   return (
     <>
       {/* Mobile sidebar overlay */}
       {isOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-black bg-opacity-50 lg:hidden z-30"
           onClick={onClose}
         />
       )}
-      
+
       {/* Sidebar */}
       <nav className={`
         fixed lg:static inset-y-0 left-0 z-40 w-64 bg-white border-r border-gray-200
@@ -140,6 +168,7 @@ function SidebarNavigation({ isOpen, onClose }) {
       `}>
         <div className="px-3 space-y-2 flex-1">
           {sidebarLinks.map(createNavigationLink)}
+          <RecentlyViewedNav />
         </div>
         <p className="px-4 pb-4 text-xs text-gray-400">Built by Jayvee Velayo</p>
       </nav>

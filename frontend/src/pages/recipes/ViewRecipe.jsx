@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router";
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getRecipeId, updateRecipe, deleteRecipe } from "./recipe_apis";
@@ -9,6 +9,7 @@ import { parseIngredient } from '../../utils/parseIngredient';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { TagInput } from '../common/TagInput';
+import { addRecentlyViewed } from '../../utils/recentlyViewed';
 
 function getTagColor(tag) {
   const tagColorMap = {
@@ -35,6 +36,10 @@ export function ViewRecipe() {
       queryKey: ['recipes', id],
       queryFn: () => getRecipeId(id),
   });
+
+  useEffect(() => {
+    if (data?.id) addRecentlyViewed({ id: data.id, name: data.name });
+  }, [data?.id]);
 
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState('');
