@@ -86,6 +86,13 @@ var dbMigrations = []migration{
 		}
 		return nil
 	}},
+	{5, func(db *sql.DB) error {
+		_, err := db.Exec(`ALTER TABLE recipes ADD COLUMN is_favourite BOOLEAN NOT NULL DEFAULT FALSE`)
+		if err != nil && !strings.Contains(err.Error(), "duplicate column name") {
+			return err
+		}
+		return nil
+	}},
 }
 
 func runMigrations(db *sql.DB) error {

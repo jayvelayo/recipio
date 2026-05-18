@@ -21,7 +21,7 @@ func (iface *SqliteDatabaseContext) CreateRecipe(userID string, newRecipe rec.Re
 
 	recipeID := uuid.New().String()
 	instructions := encodeInstructionList(newRecipe.Instructions)
-	_, err = tx.Exec("INSERT INTO recipes (id, user_id, name, instruction, source_url) VALUES (?, ?, ?, ?, ?)", recipeID, userID, newRecipe.Name, instructions, newRecipe.SourceURL)
+	_, err = tx.Exec("INSERT INTO recipes (id, user_id, name, instruction, source_url, is_favourite) VALUES (?, ?, ?, ?, ?, ?)", recipeID, userID, newRecipe.Name, instructions, newRecipe.SourceURL, newRecipe.IsFavourite)
 	if err != nil {
 		return "", fmt.Errorf("failed to insert recipe: %w", err)
 	}
@@ -66,8 +66,8 @@ func (ctx *SqliteDatabaseContext) GetRecipe(id string) (rec.Recipe, error) {
 	var recipe rec.Recipe
 	var instructions string
 
-	row := db.QueryRow("SELECT id, name, instruction, COALESCE(source_url, '') FROM recipes WHERE id = ?", id)
-	if err := row.Scan(&recipe.ID, &recipe.Name, &instructions, &recipe.SourceURL); err != nil {
+	row := db.QueryRow("SELECT id, name, instruction, COALESCE(source_url, ''), is_favourite FROM recipes WHERE id = ?", id)
+	if err := row.Scan(&recipe.ID, &recipe.Name, &instructions, &recipe.SourceURL, &recipe.IsFavourite); err != nil {
 		if err == sql.ErrNoRows {
 			return rec.Recipe{}, fmt.Errorf("recipe with id %s not found", id)
 		}
@@ -114,7 +114,7 @@ func (ctx *SqliteDatabaseContext) UpdateRecipe(id string, recipe rec.Recipe) err
 	defer tx.Rollback()
 
 	instructions := encodeInstructionList(recipe.Instructions)
-	res, err := tx.Exec("UPDATE recipes SET name = ?, instruction = ?, source_url = ? WHERE id = ?", recipe.Name, instructions, recipe.SourceURL, id)
+	res, err := tx.Exec("UPDATE recipes SET name = ?, instruction = ?, source_url = ?, is_favourite = ? WHERE id = ?", recipe.Name, instructions, recipe.SourceURL, recipe.IsFavourite, id)
 	if err != nil {
 		return fmt.Errorf("failed to update recipe: %w", err)
 	}
@@ -206,7 +206,7 @@ func (ctx *SqliteDatabaseContext) GetAllRecipes(userID string) (rec.Recipes, err
 	db := ctx.sqliteDb
 
 	rows, err := db.Query(`
-		SELECT r.id, r.name, r.instruction, COALESCE(r.source_url, ''), i.name, i.quantity
+		SELECT r.id, r.name, r.instruction, COALESCE(r.source_url, ''), r.is_favourite, i.name, i.quantity
 		FROM recipes r
 		LEFT JOIN ingredients i ON i.recipe_id = r.id
 		WHERE r.user_id = ?
@@ -221,8 +221,9 @@ func (ctx *SqliteDatabaseContext) GetAllRecipes(userID string) (rec.Recipes, err
 	for rows.Next() {
 		var id string
 		var name, instruction, sourceURL string
+		var isFavourite bool
 		var ingName, ingQty sql.NullString
-		if err := rows.Scan(&id, &name, &instruction, &sourceURL, &ingName, &ingQty); err != nil {
+		if err := rows.Scan(&id, &name, &instruction, &sourceURL, &isFavourite, &ingName, &ingQty); err != nil {
 			return rec.Recipes{}, err
 		}
 		if current.ID != id {
@@ -234,6 +235,7 @@ func (ctx *SqliteDatabaseContext) GetAllRecipes(userID string) (rec.Recipes, err
 				Name:         name,
 				Instructions: decodeInstructionList(instruction),
 				SourceURL:    sourceURL,
+				IsFavourite:  isFavourite,
 			}
 		}
 		if ingName.Valid {

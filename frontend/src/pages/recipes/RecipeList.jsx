@@ -4,7 +4,7 @@ import { deleteRecipe, getRecipes, updateRecipe } from "./recipe_apis";
 import { getMealPlans, createMealPlan, addRecipesToMealPlan } from "../mealplan/mealplan_apis";
 import { Form } from "react-router";
 import { SkeletonList } from '/src/pages/common/LoadingPage';
-import { FiTrash2, FiSearch, FiPlus, FiX, FiCalendar, FiTag } from 'react-icons/fi';
+import { FiTrash2, FiSearch, FiPlus, FiX, FiCalendar, FiTag, FiStar } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { TagInput } from '../common/TagInput';
@@ -122,6 +122,8 @@ function AddTagsModal({ selectedIds, recipes, onClose, onSuccess }) {
           ingredients: r.ingredients ?? [],
           instructions: r.instructions ?? [],
           tags: [...new Set([...(r.tags ?? []), ...newTags])],
+          source_url: r.source_url,
+          is_favourite: r.is_favourite ?? false,
         },
       })
     ));
@@ -163,7 +165,7 @@ function AddTagsModal({ selectedIds, recipes, onClose, onSuccess }) {
   );
 }
 
-function RecipeRowPreview({ recipe, selected, onToggle }) {
+function RecipeRowPreview({ recipe, selected, onToggle, onToggleFavourite }) {
   return (
     <div className={`flex items-center gap-3 p-4 border-b border-gray-200 hover:bg-gray-50 transition ${selected ? 'bg-indigo-50 hover:bg-indigo-50' : ''}`}>
       <input
@@ -177,6 +179,16 @@ function RecipeRowPreview({ recipe, selected, onToggle }) {
         <h3 className="font-semibold text-gray-900 hover:text-indigo-600 truncate">{recipe.name}</h3>
         <p className="text-sm text-gray-500 mt-0.5">Tags: {displayTagsToString(recipe.tags)}</p>
       </a>
+      <button
+        onClick={e => { e.stopPropagation(); onToggleFavourite(recipe); }}
+        className="p-1.5 rounded-lg hover:bg-gray-100 transition shrink-0"
+        title={recipe.is_favourite ? 'Remove from favourites' : 'Add to favourites'}
+      >
+        <FiStar
+          size={16}
+          className={recipe.is_favourite ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'}
+        />
+      </button>
     </div>
   );
 }
@@ -265,6 +277,26 @@ function RecipeListRows({ recipes }) {
   };
 
   const clearSelection = () => setSelectedIds(new Set());
+
+  const favouriteMutation = useMutation({
+    mutationFn: ({ id, recipe }) => updateRecipe({ id, recipe }),
+    onSuccess: () => queryClient.invalidateQueries(['recipes']),
+    onError: () => toast.error('Failed to update favourite'),
+  });
+
+  const handleToggleFavourite = (recipe) => {
+    favouriteMutation.mutate({
+      id: recipe.id,
+      recipe: {
+        name: recipe.name,
+        ingredients: recipe.ingredients ?? [],
+        instructions: recipe.instructions ?? [],
+        tags: recipe.tags ?? [],
+        source_url: recipe.source_url,
+        is_favourite: !recipe.is_favourite,
+      },
+    });
+  };
 
   const deleteMutation = useMutation({
     mutationFn: (ids) => Promise.all(ids.map(id => deleteRecipe(id))),
@@ -375,6 +407,7 @@ function RecipeListRows({ recipes }) {
                 recipe={recipe}
                 selected={selectedIds.has(recipe.id)}
                 onToggle={() => toggleSelect(recipe.id)}
+                onToggleFavourite={handleToggleFavourite}
               />
             </motion.div>
           ))

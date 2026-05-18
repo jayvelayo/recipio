@@ -146,13 +146,6 @@ function SidebarNavigation({ isOpen, onClose }) {
   )
 }
 
-export function HomePage() {
-    return (
-        <div>
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">Welcome to sarap.recipes</h1>
-          <p className="text-lg text-gray-600">Manage your recipes, meal plans, and grocery lists all in one place.</p>
-        </div>
-    )
-}
+export { HomePage } from './pages/home/HomePage';
 
 export default App

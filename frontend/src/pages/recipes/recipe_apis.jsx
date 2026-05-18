@@ -69,6 +69,8 @@ export function updateRecipe({ id, recipe }) {
     ingredients: Array.isArray(recipe.ingredients) ? recipe.ingredients : [],
     instructions: Array.isArray(recipe.instructions) ? recipe.instructions : [],
     tags: Array.isArray(recipe.tags) ? recipe.tags : [],
+    source_url: recipe.source_url ?? '',
+    is_favourite: recipe.is_favourite ?? false,
   };
   return fetch(`/recipes/${id}`, {
     method: 'PUT',

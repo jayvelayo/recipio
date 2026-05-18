@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getRecipeId, updateRecipe } from "./recipe_apis";
 import { Link } from "react-router";
 import LoadingPage from '/src/pages/common/LoadingPage'
-import { FiArrowLeft, FiEdit2, FiCheck, FiX } from 'react-icons/fi';
+import { FiArrowLeft, FiEdit2, FiCheck, FiX, FiStar } from 'react-icons/fi';
 import { parseIngredient } from '../../utils/parseIngredient';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
@@ -54,6 +54,15 @@ export function ViewRecipe() {
     },
   });
 
+  const favouriteMutation = useMutation({
+    mutationFn: updateRecipe,
+    onSuccess: () => {
+      queryClient.invalidateQueries(['recipes', id]);
+      queryClient.invalidateQueries(['recipes']);
+    },
+    onError: () => toast.error('Failed to update favourite'),
+  });
+
   if (isLoading) return <LoadingPage />
   if (isError) return <p className="text-red-600">Error: {error.message}</p>
 
@@ -82,6 +91,22 @@ export function ViewRecipe() {
         ingredients: editIngredients.split(/\r?\n/).filter(Boolean).map(parseIngredient),
         instructions: editInstructions.split(/\r?\n/).filter(Boolean),
         tags: editTags,
+        source_url: recipe.source_url,
+        is_favourite: recipe.is_favourite,
+      },
+    });
+  };
+
+  const handleToggleFavourite = () => {
+    favouriteMutation.mutate({
+      id,
+      recipe: {
+        name: recipe.name,
+        ingredients: recipe.ingredients ?? [],
+        instructions: recipe.instructions ?? [],
+        tags: recipe.tags ?? [],
+        source_url: recipe.source_url,
+        is_favourite: !recipe.is_favourite,
       },
     });
   };
@@ -210,6 +235,17 @@ export function ViewRecipe() {
           <FiArrowLeft size={24} />
         </Link>
         <h1 className="text-4xl font-bold text-gray-900 flex-1">{recipe.name}</h1>
+        <button
+          onClick={handleToggleFavourite}
+          disabled={favouriteMutation.isPending}
+          className="p-2 hover:bg-gray-100 rounded-lg transition"
+          title={recipe.is_favourite ? 'Remove from favourites' : 'Add to favourites'}
+        >
+          <FiStar
+            size={22}
+            className={recipe.is_favourite ? 'text-yellow-400 fill-yellow-400' : 'text-gray-400'}
+          />
+        </button>
         <button
           onClick={handleStartEdit}
           className="p-2 hover:bg-gray-100 rounded-lg transition"
