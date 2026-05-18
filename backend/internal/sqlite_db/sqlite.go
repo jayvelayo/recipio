@@ -50,6 +50,31 @@ func InitDb(db_path string) (rec.RecipeDatabase, error) {
 	if err != nil && !strings.Contains(err.Error(), "duplicate column name") {
 		return nil, fmt.Errorf("failed to migrate users table: %w", err)
 	}
+
+	// Migrate recipes.id from INTEGER PRIMARY KEY to TEXT PRIMARY KEY so UUIDs can be used.
+	var recipesSQL string
+	if err := db.QueryRow(`SELECT sql FROM sqlite_master WHERE type='table' AND name='recipes'`).Scan(&recipesSQL); err == nil {
+		if strings.Contains(strings.ToUpper(recipesSQL), "ID INTEGER PRIMARY KEY") {
+			migrateSteps := []string{
+				`CREATE TABLE recipes_new (
+					id TEXT PRIMARY KEY,
+					user_id TEXT,
+					name TEXT NOT NULL,
+					instruction TEXT NOT NULL,
+					FOREIGN KEY (user_id) REFERENCES users(id)
+				)`,
+				`INSERT INTO recipes_new (id, user_id, name, instruction)
+					SELECT CAST(id AS TEXT), user_id, name, instruction FROM recipes`,
+				`DROP TABLE recipes`,
+				`ALTER TABLE recipes_new RENAME TO recipes`,
+			}
+			for _, step := range migrateSteps {
+				if _, err := db.Exec(step); err != nil {
+					return nil, fmt.Errorf("failed to migrate recipes.id to TEXT: %w", err)
+				}
+			}
+		}
+	}
 	sqliteDb := &SqliteDatabaseContext{
 		sqliteDb: db,
 	}

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { createRecipe, parseRecipe, parseRecipeURL } from "./recipe_apis";
 import { useNavigate, useBlocker } from "react-router";
@@ -11,11 +11,14 @@ export function AddRecipeForm() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
+  const skipBlockRef = useRef(false);
+
   const mutation = useMutation({
     mutationFn: createRecipe,
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries(['recipes']);
       toast.success(`"${variables.name}" added`);
+      skipBlockRef.current = true;
       navigate("/recipe");
     },
     onError: () => {
@@ -46,18 +49,25 @@ export function AddRecipeForm() {
     rawRecipeText.trim() !== "" ||
     recipeURL.trim() !== "";
 
-  const blocker = useBlocker(isDirty && !mutation.isSuccess);
+  const isDirtyRef = useRef(isDirty);
+  isDirtyRef.current = isDirty;
+
+  const blockerFn = useCallback(
+    () => isDirtyRef.current && !skipBlockRef.current,
+    []
+  );
+  const blocker = useBlocker(blockerFn);
 
   useEffect(() => {
     const onBeforeUnload = (e) => {
-      if (isDirty && !mutation.isSuccess) {
+      if (isDirtyRef.current && !skipBlockRef.current) {
         e.preventDefault();
         e.returnValue = '';
       }
     };
     window.addEventListener('beforeunload', onBeforeUnload);
     return () => window.removeEventListener('beforeunload', onBeforeUnload);
-  }, [isDirty, mutation.isSuccess]);
+  }, []);
 
   useEffect(() => {
     if (!previewLoading) {
