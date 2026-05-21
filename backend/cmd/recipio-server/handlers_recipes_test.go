@@ -77,6 +77,16 @@ func TestGetRecipeHandler(t *testing.T) {
 			t.Errorf("Expected status code %d, got %d", http.StatusNotFound, response.Code)
 		}
 	})
+
+	t.Run("Returns 404 when another user requests it", func(t *testing.T) {
+		req, _ := http.NewRequest("GET", "/recipes/1", nil)
+		req.Header.Set(asUserHeader, otherUserID)
+		response := httptest.NewRecorder()
+		handler.ServeHTTP(response, req)
+		if response.Code != http.StatusNotFound {
+			t.Errorf("Expected status code %d, got %d", http.StatusNotFound, response.Code)
+		}
+	})
 }
 
 func TestUpdateRecipeHandler(t *testing.T) {
@@ -134,6 +144,21 @@ func TestUpdateRecipeHandler(t *testing.T) {
 			t.Errorf("Expected status code %d, got %d", http.StatusNotFound, response.Code)
 		}
 	})
+
+	t.Run("Returns 404 when another user updates it", func(t *testing.T) {
+		body := map[string]interface{}{
+			"name":         "Hijacked",
+			"ingredients":  []map[string]string{{"name": "Poison", "quantity": "1"}},
+			"instructions": []string{"Stir"},
+		}
+		req, _ := createRequestWithBody("PUT", "/recipes/1", body)
+		req.Header.Set(asUserHeader, otherUserID)
+		response := httptest.NewRecorder()
+		handler.ServeHTTP(response, req)
+		if response.Code != http.StatusNotFound {
+			t.Errorf("Expected status code %d, got %d", http.StatusNotFound, response.Code)
+		}
+	})
 }
 
 func TestDeleteRecipeHandler(t *testing.T) {
@@ -147,6 +172,16 @@ func TestDeleteRecipeHandler(t *testing.T) {
 
 	t.Run("Returns 404 for non-existent recipe", func(t *testing.T) {
 		req, _ := http.NewRequest("DELETE", "/recipes/nonexistent-id", nil)
+		response := httptest.NewRecorder()
+		handler.ServeHTTP(response, req)
+		if response.Code != http.StatusNotFound {
+			t.Errorf("Expected status code %d, got %d", http.StatusNotFound, response.Code)
+		}
+	})
+
+	t.Run("Returns 404 when another user deletes it", func(t *testing.T) {
+		req, _ := http.NewRequest("DELETE", "/recipes/1", nil)
+		req.Header.Set(asUserHeader, otherUserID)
 		response := httptest.NewRecorder()
 		handler.ServeHTTP(response, req)
 		if response.Code != http.StatusNotFound {

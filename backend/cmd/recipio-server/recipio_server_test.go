@@ -33,13 +33,21 @@ func getResponseBody(r *httptest.ResponseRecorder) string {
 	return string(bodybytes)
 }
 
-const testUserID = "test-user-id"
+const (
+	testUserID  = "test-user-id"
+	otherUserID = "other-user-id"
+	asUserHeader = "X-Test-User-Id"
+)
 
 func createFakeServer(db rec.RecipeDatabase) http.Handler {
 	mux := http.NewServeMux()
 	SetUpRoutes(mux, db, nil, []string{}, nil, authn.GoogleOAuthConfig{}, authn.EmailSender{})
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ctx := context.WithValue(r.Context(), userIDKey, testUserID)
+		uid := testUserID
+		if h := r.Header.Get(asUserHeader); h != "" {
+			uid = h
+		}
+		ctx := context.WithValue(r.Context(), userIDKey, uid)
 		mux.ServeHTTP(w, r.WithContext(ctx))
 	})
 }

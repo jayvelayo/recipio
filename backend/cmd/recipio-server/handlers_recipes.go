@@ -96,7 +96,8 @@ func handleDesignUpdateRecipe(recipeDb rec.RecipeDatabase) http.Handler {
 			http.Error(w, "Missing required fields: name, ingredients, instructions", http.StatusBadRequest)
 			return
 		}
-		if err := recipeDb.UpdateRecipe(id, recipe); err != nil {
+		userID := r.Context().Value(userIDKey).(string)
+		if err := recipeDb.UpdateRecipe(userID, id, recipe); err != nil {
 			http.Error(w, err.Error(), http.StatusNotFound)
 			return
 		}
@@ -107,7 +108,8 @@ func handleDesignUpdateRecipe(recipeDb rec.RecipeDatabase) http.Handler {
 func handleDesignDeleteRecipe(recipeDb rec.RecipeDatabase) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		id := r.PathValue("id")
-		if err := recipeDb.DeleteRecipe(id); err != nil {
+		userID := r.Context().Value(userIDKey).(string)
+		if err := recipeDb.DeleteRecipe(userID, id); err != nil {
 			http.Error(w, err.Error(), http.StatusNotFound)
 			return
 		}
@@ -118,7 +120,8 @@ func handleDesignDeleteRecipe(recipeDb rec.RecipeDatabase) http.Handler {
 func handleDesignGetRecipe(recipeDb rec.RecipeDatabase) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		id := r.PathValue("id")
-		recipe, err := recipeDb.GetRecipe(id)
+		userID := r.Context().Value(userIDKey).(string)
+		recipe, err := recipeDb.GetRecipe(userID, id)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusNotFound)
 			return

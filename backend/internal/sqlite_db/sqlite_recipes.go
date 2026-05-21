@@ -63,13 +63,13 @@ func (iface *SqliteDatabaseContext) CreateRecipe(userID string, newRecipe rec.Re
 	return recipeID, nil
 }
 
-func (ctx *SqliteDatabaseContext) GetRecipe(id string) (rec.Recipe, error) {
+func (ctx *SqliteDatabaseContext) GetRecipe(userID, id string) (rec.Recipe, error) {
 	db := ctx.sqliteDb
 	var recipe rec.Recipe
 	var instructions string
 
 	var createdAt sql.NullString
-	row := db.QueryRow("SELECT id, name, instruction, COALESCE(source_url, ''), is_favourite, created_at FROM recipes WHERE id = ?", id)
+	row := db.QueryRow("SELECT id, name, instruction, COALESCE(source_url, ''), is_favourite, created_at FROM recipes WHERE id = ? AND user_id = ?", id, userID)
 	if err := row.Scan(&recipe.ID, &recipe.Name, &instructions, &recipe.SourceURL, &recipe.IsFavourite, &createdAt); err != nil {
 		if err == sql.ErrNoRows {
 			return rec.Recipe{}, fmt.Errorf("recipe with id %s not found", id)
@@ -111,7 +111,7 @@ func (ctx *SqliteDatabaseContext) GetRecipe(id string) (rec.Recipe, error) {
 	return recipe, nil
 }
 
-func (ctx *SqliteDatabaseContext) UpdateRecipe(id string, recipe rec.Recipe) error {
+func (ctx *SqliteDatabaseContext) UpdateRecipe(userID, id string, recipe rec.Recipe) error {
 	db := ctx.sqliteDb
 	tx, err := db.Begin()
 	if err != nil {
@@ -120,7 +120,7 @@ func (ctx *SqliteDatabaseContext) UpdateRecipe(id string, recipe rec.Recipe) err
 	defer tx.Rollback()
 
 	instructions := encodeInstructionList(recipe.Instructions)
-	res, err := tx.Exec("UPDATE recipes SET name = ?, instruction = ?, source_url = ?, is_favourite = ? WHERE id = ?", recipe.Name, instructions, recipe.SourceURL, recipe.IsFavourite, id)
+	res, err := tx.Exec("UPDATE recipes SET name = ?, instruction = ?, source_url = ?, is_favourite = ? WHERE id = ? AND user_id = ?", recipe.Name, instructions, recipe.SourceURL, recipe.IsFavourite, id, userID)
 	if err != nil {
 		return fmt.Errorf("failed to update recipe: %w", err)
 	}
@@ -175,7 +175,7 @@ func (ctx *SqliteDatabaseContext) UpdateRecipe(id string, recipe rec.Recipe) err
 	return nil
 }
 
-func (ctx *SqliteDatabaseContext) DeleteRecipe(id string) error {
+func (ctx *SqliteDatabaseContext) DeleteRecipe(userID, id string) error {
 	db := ctx.sqliteDb
 	tx, err := db.Begin()
 	if err != nil {
@@ -183,14 +183,7 @@ func (ctx *SqliteDatabaseContext) DeleteRecipe(id string) error {
 	}
 	defer tx.Rollback()
 
-	if _, err := tx.Exec("DELETE FROM ingredients WHERE recipe_id = ?", id); err != nil {
-		return fmt.Errorf("failed to delete ingredients: %w", err)
-	}
-	if _, err := tx.Exec("DELETE FROM recipe_tags WHERE recipe_id = ?", id); err != nil {
-		return fmt.Errorf("failed to delete tags: %w", err)
-	}
-
-	res, err := tx.Exec("DELETE FROM recipes WHERE id = ?", id)
+	res, err := tx.Exec("DELETE FROM recipes WHERE id = ? AND user_id = ?", id, userID)
 	if err != nil {
 		return fmt.Errorf("failed to delete recipe: %w", err)
 	}
@@ -200,6 +193,13 @@ func (ctx *SqliteDatabaseContext) DeleteRecipe(id string) error {
 	}
 	if rowsAffected == 0 {
 		return fmt.Errorf("recipe with id %s not found", id)
+	}
+
+	if _, err := tx.Exec("DELETE FROM ingredients WHERE recipe_id = ?", id); err != nil {
+		return fmt.Errorf("failed to delete ingredients: %w", err)
+	}
+	if _, err := tx.Exec("DELETE FROM recipe_tags WHERE recipe_id = ?", id); err != nil {
+		return fmt.Errorf("failed to delete tags: %w", err)
 	}
 
 	if err := tx.Commit(); err != nil {
@@ -293,11 +293,11 @@ func (ctx *SqliteDatabaseContext) AddRecipeToMealPlan(id string) error {
 	return nil
 }
 
-func (ctx *SqliteDatabaseContext) AddRecipesToMealPlan(mealPlanID string, recipeIDs []string) error {
+func (ctx *SqliteDatabaseContext) AddRecipesToMealPlan(userID, mealPlanID string, recipeIDs []string) error {
 	db := ctx.sqliteDb
 	planID, err := strconv.ParseInt(mealPlanID, 10, 64)
 	if err != nil || planID < 1 {
-		return fmt.Errorf("invalid meal plan id: %s", mealPlanID)
+		return fmt.Errorf("meal plan with id %s not found", mealPlanID)
 	}
 
 	tx, err := db.Begin()
@@ -305,6 +305,14 @@ func (ctx *SqliteDatabaseContext) AddRecipesToMealPlan(mealPlanID string, recipe
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
 	defer tx.Rollback()
+
+	var owned int
+	if err := tx.QueryRow("SELECT 1 FROM meal_plan WHERE id = ? AND user_id = ?", planID, userID).Scan(&owned); err != nil {
+		if err == sql.ErrNoRows {
+			return fmt.Errorf("meal plan with id %s not found", mealPlanID)
+		}
+		return fmt.Errorf("failed to verify meal plan ownership: %w", err)
+	}
 
 	stmt, err := tx.Prepare("INSERT OR IGNORE INTO meal_plan_recipes (meal_plan_id, recipe_id) VALUES (?, ?)")
 	if err != nil {
@@ -406,11 +414,19 @@ func (ctx *SqliteDatabaseContext) GetAllMealPlans(userID string) ([]rec.MealPlan
 	return plans, nil
 }
 
-func (ctx *SqliteDatabaseContext) GetGroceryList(mealPlanID string) ([]rec.GroceryListItem, error) {
+func (ctx *SqliteDatabaseContext) GetGroceryList(userID, mealPlanID string) ([]rec.GroceryListItem, error) {
 	db := ctx.sqliteDb
 	planID, err := strconv.ParseInt(mealPlanID, 10, 64)
 	if err != nil || planID < 1 {
-		return nil, fmt.Errorf("invalid meal plan id: %s", mealPlanID)
+		return nil, fmt.Errorf("meal plan with id %s not found", mealPlanID)
+	}
+
+	var owned int
+	if err := db.QueryRow("SELECT 1 FROM meal_plan WHERE id = ? AND user_id = ?", planID, userID).Scan(&owned); err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("meal plan with id %s not found", mealPlanID)
+		}
+		return nil, fmt.Errorf("failed to verify meal plan ownership: %w", err)
 	}
 
 	rows, err := db.Query(
@@ -481,11 +497,11 @@ func (ctx *SqliteDatabaseContext) GetGroceryList(mealPlanID string) ([]rec.Groce
 	return ctx.attachCategories(result), nil
 }
 
-func (ctx *SqliteDatabaseContext) DeleteMealPlan(mealPlanID string) error {
+func (ctx *SqliteDatabaseContext) DeleteMealPlan(userID, mealPlanID string) error {
 	db := ctx.sqliteDb
 	planID, err := strconv.ParseInt(mealPlanID, 10, 64)
 	if err != nil || planID < 1 {
-		return fmt.Errorf("invalid meal plan id: %s", mealPlanID)
+		return fmt.Errorf("meal plan with id %s not found", mealPlanID)
 	}
 
 	tx, err := db.Begin()
@@ -494,11 +510,20 @@ func (ctx *SqliteDatabaseContext) DeleteMealPlan(mealPlanID string) error {
 	}
 	defer tx.Rollback()
 
+	res, err := tx.Exec("DELETE FROM meal_plan WHERE id = ? AND user_id = ?", planID, userID)
+	if err != nil {
+		return fmt.Errorf("failed to delete meal plan: %w", err)
+	}
+	rowsAffected, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get affected rows: %w", err)
+	}
+	if rowsAffected == 0 {
+		return fmt.Errorf("meal plan with id %s not found", mealPlanID)
+	}
+
 	if _, err = tx.Exec("DELETE FROM meal_plan_recipes WHERE meal_plan_id = ?", planID); err != nil {
 		return fmt.Errorf("failed to delete meal plan recipes: %w", err)
-	}
-	if _, err = tx.Exec("DELETE FROM meal_plan WHERE id = ?", planID); err != nil {
-		return fmt.Errorf("failed to delete meal plan: %w", err)
 	}
 
 	if err := tx.Commit(); err != nil {
@@ -608,12 +633,15 @@ func (ctx *SqliteDatabaseContext) getGroceryListItems(listID string) ([]rec.Groc
 	return ctx.attachCategories(items), nil
 }
 
-func (ctx *SqliteDatabaseContext) GetGroceryListByID(id string) (rec.GroceryList, error) {
+func (ctx *SqliteDatabaseContext) GetGroceryListByID(userID, id string) (rec.GroceryList, error) {
 	db := ctx.sqliteDb
 	var list rec.GroceryList
 	var mealPlanID sql.NullInt64
-	err := db.QueryRow("SELECT id, name, meal_plan_id FROM grocery_lists WHERE id = ?", id).Scan(&list.ID, &list.Name, &mealPlanID)
+	err := db.QueryRow("SELECT id, name, meal_plan_id FROM grocery_lists WHERE id = ? AND user_id = ?", id, userID).Scan(&list.ID, &list.Name, &mealPlanID)
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return rec.GroceryList{}, fmt.Errorf("grocery list with id %s not found", id)
+		}
 		return rec.GroceryList{}, fmt.Errorf("grocery list not found: %w", err)
 	}
 	if mealPlanID.Valid {
@@ -629,13 +657,21 @@ func (ctx *SqliteDatabaseContext) GetGroceryListByID(id string) (rec.GroceryList
 	return list, nil
 }
 
-func (ctx *SqliteDatabaseContext) UpdateGroceryList(id string, items []rec.GroceryListItem) error {
+func (ctx *SqliteDatabaseContext) UpdateGroceryList(userID, id string, items []rec.GroceryListItem) error {
 	db := ctx.sqliteDb
 	tx, err := db.Begin()
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
 	defer tx.Rollback()
+
+	var owned int
+	if err := tx.QueryRow("SELECT 1 FROM grocery_lists WHERE id = ? AND user_id = ?", id, userID).Scan(&owned); err != nil {
+		if err == sql.ErrNoRows {
+			return fmt.Errorf("grocery list with id %s not found", id)
+		}
+		return fmt.Errorf("failed to verify grocery list ownership: %w", err)
+	}
 
 	if _, err = tx.Exec("DELETE FROM grocery_list_items WHERE grocery_list_id = ?", id); err != nil {
 		return fmt.Errorf("failed to delete existing items: %w", err)
@@ -660,7 +696,7 @@ func (ctx *SqliteDatabaseContext) UpdateGroceryList(id string, items []rec.Groce
 	return nil
 }
 
-func (ctx *SqliteDatabaseContext) DeleteGroceryList(id string) error {
+func (ctx *SqliteDatabaseContext) DeleteGroceryList(userID, id string) error {
 	db := ctx.sqliteDb
 	tx, err := db.Begin()
 	if err != nil {
@@ -668,11 +704,20 @@ func (ctx *SqliteDatabaseContext) DeleteGroceryList(id string) error {
 	}
 	defer tx.Rollback()
 
+	res, err := tx.Exec("DELETE FROM grocery_lists WHERE id = ? AND user_id = ?", id, userID)
+	if err != nil {
+		return fmt.Errorf("failed to delete grocery list: %w", err)
+	}
+	rowsAffected, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get affected rows: %w", err)
+	}
+	if rowsAffected == 0 {
+		return fmt.Errorf("grocery list with id %s not found", id)
+	}
+
 	if _, err = tx.Exec("DELETE FROM grocery_list_items WHERE grocery_list_id = ?", id); err != nil {
 		return fmt.Errorf("failed to delete grocery list items: %w", err)
-	}
-	if _, err = tx.Exec("DELETE FROM grocery_lists WHERE id = ?", id); err != nil {
-		return fmt.Errorf("failed to delete grocery list: %w", err)
 	}
 
 	if err := tx.Commit(); err != nil {

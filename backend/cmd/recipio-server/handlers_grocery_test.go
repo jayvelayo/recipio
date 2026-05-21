@@ -30,6 +30,16 @@ func TestGetGroceryListForMealPlanHandler(t *testing.T) {
 			t.Errorf("Expected status code %d, got %d", http.StatusNotFound, response.Code)
 		}
 	})
+
+	t.Run("Returns 404 when another user requests it", func(t *testing.T) {
+		req, _ := http.NewRequest("GET", "/grocery-list/1", nil)
+		req.Header.Set(asUserHeader, otherUserID)
+		response := httptest.NewRecorder()
+		handler.ServeHTTP(response, req)
+		if response.Code != http.StatusNotFound {
+			t.Errorf("Expected status code %d, got %d", http.StatusNotFound, response.Code)
+		}
+	})
 }
 
 func TestCreateGroceryListHandler(t *testing.T) {
@@ -105,6 +115,16 @@ func TestGetGroceryListByIDHandler(t *testing.T) {
 			t.Errorf("Expected status code %d, got %d", http.StatusNotFound, response.Code)
 		}
 	})
+
+	t.Run("Returns 404 when another user requests it", func(t *testing.T) {
+		req, _ := http.NewRequest("GET", "/grocery-lists/1", nil)
+		req.Header.Set(asUserHeader, otherUserID)
+		response := httptest.NewRecorder()
+		handler.ServeHTTP(response, req)
+		if response.Code != http.StatusNotFound {
+			t.Errorf("Expected status code %d, got %d", http.StatusNotFound, response.Code)
+		}
+	})
 }
 
 func TestUpdateGroceryListHandler(t *testing.T) {
@@ -140,6 +160,17 @@ func TestUpdateGroceryListHandler(t *testing.T) {
 			t.Errorf("Expected status code %d, got %d", http.StatusNotFound, response.Code)
 		}
 	})
+
+	t.Run("Returns 404 when another user updates it", func(t *testing.T) {
+		items := []map[string]interface{}{{"name": "Hijacked", "quantity": "9", "checked": false}}
+		req, _ := createRequestWithBody("PUT", "/grocery-lists/1", items)
+		req.Header.Set(asUserHeader, otherUserID)
+		response := httptest.NewRecorder()
+		handler.ServeHTTP(response, req)
+		if response.Code != http.StatusNotFound {
+			t.Errorf("Expected status code %d, got %d", http.StatusNotFound, response.Code)
+		}
+	})
 }
 
 func TestDeleteGroceryListHandler(t *testing.T) {
@@ -149,6 +180,16 @@ func TestDeleteGroceryListHandler(t *testing.T) {
 
 	t.Run("Returns 404 for non-existent grocery list", func(t *testing.T) {
 		req, _ := http.NewRequest("DELETE", "/grocery-lists/999", nil)
+		response := httptest.NewRecorder()
+		handler.ServeHTTP(response, req)
+		if response.Code != http.StatusNotFound {
+			t.Errorf("Expected status code %d, got %d", http.StatusNotFound, response.Code)
+		}
+	})
+
+	t.Run("Returns 404 when another user deletes it", func(t *testing.T) {
+		req, _ := http.NewRequest("DELETE", "/grocery-lists/1", nil)
+		req.Header.Set(asUserHeader, otherUserID)
 		response := httptest.NewRecorder()
 		handler.ServeHTTP(response, req)
 		if response.Code != http.StatusNotFound {

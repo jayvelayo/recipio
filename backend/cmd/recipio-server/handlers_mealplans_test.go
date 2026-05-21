@@ -58,12 +58,39 @@ func TestDeleteMealPlanHandler(t *testing.T) {
 		}
 	})
 
+	t.Run("Returns 404 when another user deletes it", func(t *testing.T) {
+		req, _ := http.NewRequest("DELETE", "/meal-plans/1", nil)
+		req.Header.Set(asUserHeader, otherUserID)
+		response := httptest.NewRecorder()
+		handler.ServeHTTP(response, req)
+		if response.Code != http.StatusNotFound {
+			t.Errorf("Expected status code %d, got %d", http.StatusNotFound, response.Code)
+		}
+	})
+
 	t.Run("Deletes an existing meal plan", func(t *testing.T) {
 		req, _ := http.NewRequest("DELETE", "/meal-plans/1", nil)
 		response := httptest.NewRecorder()
 		handler.ServeHTTP(response, req)
 		if response.Code != http.StatusNoContent {
 			t.Errorf("Expected status code %d, got %d: %s", http.StatusNoContent, response.Code, getResponseBody(response))
+		}
+	})
+}
+
+func TestAddRecipesToMealPlanHandler(t *testing.T) {
+	mockdb := rec.MockRecipeDatabase{}
+	mockdb.CreateMealPlan(testUserID, nil)
+	handler := createFakeServer(&mockdb)
+
+	t.Run("Returns 400 when another user adds recipes to it", func(t *testing.T) {
+		body := map[string]interface{}{"recipes": []string{"r1"}}
+		req, _ := createRequestWithBody("POST", "/meal-plans/1/recipes", body)
+		req.Header.Set(asUserHeader, otherUserID)
+		response := httptest.NewRecorder()
+		handler.ServeHTTP(response, req)
+		if response.Code != http.StatusBadRequest {
+			t.Errorf("Expected status code %d, got %d", http.StatusBadRequest, response.Code)
 		}
 	})
 }

@@ -59,7 +59,8 @@ func handleDesignAddRecipesToMealPlan(recipeDb rec.RecipeDatabase) http.Handler 
 			http.Error(w, "Invalid JSON body", http.StatusBadRequest)
 			return
 		}
-		if err := recipeDb.AddRecipesToMealPlan(mealPlanID, body.Recipes); err != nil {
+		userID := r.Context().Value(userIDKey).(string)
+		if err := recipeDb.AddRecipesToMealPlan(userID, mealPlanID, body.Recipes); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
@@ -74,7 +75,8 @@ func handleDesignDeleteMealPlan(recipeDb rec.RecipeDatabase) http.Handler {
 			http.Error(w, "Missing meal plan id", http.StatusBadRequest)
 			return
 		}
-		err := recipeDb.DeleteMealPlan(mealPlanID)
+		userID := r.Context().Value(userIDKey).(string)
+		err := recipeDb.DeleteMealPlan(userID, mealPlanID)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusNotFound)
 			return

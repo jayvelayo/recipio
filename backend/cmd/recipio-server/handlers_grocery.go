@@ -14,7 +14,8 @@ func handleDesignGetGroceryList(recipeDb rec.RecipeDatabase) http.Handler {
 			http.Error(w, "Missing meal plan id", http.StatusBadRequest)
 			return
 		}
-		ingredients, err := recipeDb.GetGroceryList(mealPlanID)
+		userID := r.Context().Value(userIDKey).(string)
+		ingredients, err := recipeDb.GetGroceryList(userID, mealPlanID)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusNotFound)
 			return
@@ -67,7 +68,8 @@ func handleDesignGetGroceryListByID(recipeDb rec.RecipeDatabase) http.Handler {
 			http.Error(w, "Missing grocery list id", http.StatusBadRequest)
 			return
 		}
-		list, err := recipeDb.GetGroceryListByID(id)
+		userID := r.Context().Value(userIDKey).(string)
+		list, err := recipeDb.GetGroceryListByID(userID, id)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusNotFound)
 			return
@@ -92,7 +94,8 @@ func handleDesignUpdateGroceryList(recipeDb rec.RecipeDatabase) http.Handler {
 			http.Error(w, "Invalid JSON body", http.StatusBadRequest)
 			return
 		}
-		err := recipeDb.UpdateGroceryList(id, items)
+		userID := r.Context().Value(userIDKey).(string)
+		err := recipeDb.UpdateGroceryList(userID, id, items)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusNotFound)
 			return
@@ -108,7 +111,8 @@ func handleDesignDeleteGroceryList(recipeDb rec.RecipeDatabase) http.Handler {
 			http.Error(w, "Missing grocery list id", http.StatusBadRequest)
 			return
 		}
-		err := recipeDb.DeleteGroceryList(id)
+		userID := r.Context().Value(userIDKey).(string)
+		err := recipeDb.DeleteGroceryList(userID, id)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusNotFound)
 			return
