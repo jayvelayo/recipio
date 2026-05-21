@@ -9,7 +9,7 @@ import (
 
 func initRecipeDB(t *testing.T) rec.RecipeDatabase {
 	t.Helper()
-	db, err := sqlite_db.InitDb(":memory:")
+	db, err := sqlite_db.InitDb(":memory:", rec.AIParser{})
 	if err != nil {
 		t.Fatalf("failed to init db: %v", err)
 	}

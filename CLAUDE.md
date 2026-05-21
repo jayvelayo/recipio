@@ -36,6 +36,14 @@ make all   # Builds frontend + backend into bin/
 make run   # Starts the server at http://localhost:4002
 ```
 
+### Maintenance commands
+```bash
+# Re-run every cached ingredient through the AI categorizer against the current
+# category set. Use this after editing doc/grocerylist_categories.md and
+# backend/internal/recipes/categories.go.
+cd backend && GROQ_API_KEY=... go run ./cmd/recategorize
+```
+
 ## Environment Configuration
 
 No `.env` required for local development. Copy `.env.example` to `.env` to override defaults (e.g. `PORT`).

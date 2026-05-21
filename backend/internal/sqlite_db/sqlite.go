@@ -15,6 +15,7 @@ import (
 
 type SqliteDatabaseContext struct {
 	sqliteDb *sql.DB
+	parser   rec.AIParser
 }
 
 //go:embed schema.tmpl
@@ -123,7 +124,7 @@ func runMigrations(db *sql.DB) error {
 	return nil
 }
 
-func InitDb(db_path string) (rec.RecipeDatabase, error) {
+func InitDb(db_path string, parser rec.AIParser) (*SqliteDatabaseContext, error) {
 	db, err := sql.Open("sqlite", db_path)
 	if err != nil {
 		log.Fatal(err)
@@ -138,7 +139,24 @@ func InitDb(db_path string) (rec.RecipeDatabase, error) {
 	if err := runMigrations(db); err != nil {
 		return nil, err
 	}
-	return &SqliteDatabaseContext{sqliteDb: db}, nil
+	if err := seedIngredientCategories(db); err != nil {
+		return nil, fmt.Errorf("unable to seed ingredient categories: %v", err)
+	}
+	return &SqliteDatabaseContext{sqliteDb: db, parser: parser}, nil
+}
+
+func seedIngredientCategories(db *sql.DB) error {
+	stmt, err := db.Prepare("INSERT OR IGNORE INTO ingredient_categories (name) VALUES (?)")
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+	for _, name := range rec.Categories {
+		if _, err := stmt.Exec(name); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (ctx *SqliteDatabaseContext) CloseDb() {

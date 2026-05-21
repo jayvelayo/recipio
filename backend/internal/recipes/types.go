@@ -35,6 +35,7 @@ type GroceryListItem struct {
 	Name     string             `json:"name"`
 	Quantity string             `json:"quantity"`
 	Checked  bool               `json:"checked"`
+	Category string             `json:"category,omitempty"`
 	Sources  []IngredientSource `json:"sources,omitempty"`
 }
 

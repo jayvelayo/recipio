@@ -98,17 +98,19 @@ func main() {
 		log.Fatalf("unable to create cache dir: %v", err)
 	}
 	log.Printf("Using database: %s", dbPath)
-	recipeDb, err := sqlite_db.InitDb(dbPath)
+	aiParser := rec.NewAIParser(os.Getenv("GROQ_API_KEY"))
+	dbCtx, err := sqlite_db.InitDb(dbPath, aiParser)
 	if err != nil {
 		log.Fatalf("unable to init db: %v", err)
 	}
-	defer recipeDb.CloseDb()
+	defer dbCtx.CloseDb()
+	var recipeDb rec.RecipeDatabase = dbCtx
 	// TODO: use Redis/PostgreDB for auth database as next learning step
-	authDb, ok := recipeDb.(authn.PasswordDatabase)
+	authDb, ok := any(dbCtx).(authn.PasswordDatabase)
 	if !ok {
 		log.Fatal("database does not implement authn.PasswordDatabase")
 	}
-	googleDb, _ := recipeDb.(authn.GoogleAuthDatabase)
+	googleDb, _ := any(dbCtx).(authn.GoogleAuthDatabase)
 
 	googleClientID := os.Getenv("GOOGLE_CLIENT_ID")
 	googleClientSecret := os.Getenv("GOOGLE_CLIENT_SECRET")

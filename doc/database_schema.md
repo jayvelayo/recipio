@@ -73,6 +73,24 @@ Primary key: `(meal_plan_id, recipe_id)`
 | quantity        | text    |                                                    | Quantity or measurement (optional)        |
 | checked         | boolean | DEFAULT FALSE                                      | Whether the item has been checked off     |
 
+### Table: `ingredient_categories`
+
+Lookup table seeded at startup from `internal/recipes/categories.go` (kept in sync with `doc/grocerylist_categories.md`).
+
+| Column | Type    | Constraints       | Description                                   |
+|--------|---------|-------------------|-----------------------------------------------|
+| id     | integer | PRIMARY KEY       | Auto-assigned by SQLite                       |
+| name   | text    | NOT NULL, UNIQUE  | Category display name (e.g. "Meat", "Fruits") |
+
+### Table: `ingredient_category_cache`
+
+Cache of categorization results keyed by a normalized ingredient name (lowercase, whitespace collapsed to underscores). Populated lazily when grocery lists are read; can be rebuilt with `cmd/recategorize`.
+
+| Column          | Type    | Constraints                                                  | Description                              |
+|-----------------|---------|--------------------------------------------------------------|------------------------------------------|
+| normalized_name | text    | PRIMARY KEY                                                  | Lowercase + underscores key              |
+| category_id     | integer | NOT NULL, FOREIGN KEY references ingredient_categories(id)   | Resolved category for this ingredient    |
+
 ## AuthN Schema
 
 ### Table: `users`
@@ -182,6 +200,17 @@ CREATE TABLE IF NOT EXISTS grocery_list_items (
     quantity TEXT,
     checked BOOLEAN DEFAULT FALSE,
     FOREIGN KEY (grocery_list_id) REFERENCES grocery_lists(id)
+);
+
+CREATE TABLE IF NOT EXISTS ingredient_categories (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL UNIQUE
+);
+
+CREATE TABLE IF NOT EXISTS ingredient_category_cache (
+    normalized_name TEXT PRIMARY KEY,
+    category_id INTEGER NOT NULL,
+    FOREIGN KEY (category_id) REFERENCES ingredient_categories(id)
 );
 
 CREATE TABLE IF NOT EXISTS users (

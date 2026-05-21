@@ -478,7 +478,7 @@ func (ctx *SqliteDatabaseContext) GetGroceryList(mealPlanID string) ([]rec.Groce
 			Sources: g.sources,
 		})
 	}
-	return result, nil
+	return ctx.attachCategories(result), nil
 }
 
 func (ctx *SqliteDatabaseContext) DeleteMealPlan(mealPlanID string) error {
@@ -605,7 +605,7 @@ func (ctx *SqliteDatabaseContext) getGroceryListItems(listID string) ([]rec.Groc
 		}
 		items = append(items, item)
 	}
-	return items, nil
+	return ctx.attachCategories(items), nil
 }
 
 func (ctx *SqliteDatabaseContext) GetGroceryListByID(id string) (rec.GroceryList, error) {

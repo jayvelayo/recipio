@@ -57,6 +57,17 @@ CREATE TABLE IF NOT EXISTS recipe_tags (
     FOREIGN KEY (recipe_id) REFERENCES recipes(id)
 );
 
+CREATE TABLE IF NOT EXISTS ingredient_categories (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL UNIQUE
+);
+
+CREATE TABLE IF NOT EXISTS ingredient_category_cache (
+    normalized_name TEXT PRIMARY KEY,
+    category_id INTEGER NOT NULL,
+    FOREIGN KEY (category_id) REFERENCES ingredient_categories(id)
+);
+
 CREATE TABLE IF NOT EXISTS users (
     id TEXT PRIMARY KEY,
     email TEXT NOT NULL UNIQUE,
