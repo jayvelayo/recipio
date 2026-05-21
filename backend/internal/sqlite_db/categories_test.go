@@ -84,7 +84,7 @@ func TestGetGroceryList_CategorizesViaAI(t *testing.T) {
 		{Name: "flour", Quantity: "2 cups"},
 	})
 
-	items, err := db.GetGroceryList(planID)
+	items, err := db.GetGroceryList("test-user", planID)
 	if err != nil {
 		t.Fatalf("GetGroceryList: %v", err)
 	}
@@ -110,12 +110,12 @@ func TestGetGroceryList_UsesCacheOnSecondCall(t *testing.T) {
 
 	planID := seedRecipeAndPlan(t, db, []rec.Ingredient{{Name: "Chicken Breast", Quantity: "1 lb"}})
 
-	if _, err := db.GetGroceryList(planID); err != nil {
+	if _, err := db.GetGroceryList("test-user", planID); err != nil {
 		t.Fatalf("first call: %v", err)
 	}
 	firstHits := atomic.LoadInt32(hits)
 
-	items, err := db.GetGroceryList(planID)
+	items, err := db.GetGroceryList("test-user", planID)
 	if err != nil {
 		t.Fatalf("second call: %v", err)
 	}
@@ -140,7 +140,7 @@ func TestGetGroceryList_TimeoutFallsBackToUncategorized(t *testing.T) {
 	planID := seedRecipeAndPlan(t, db, []rec.Ingredient{{Name: "Mystery Ingredient", Quantity: "1"}})
 
 	start := time.Now()
-	items, err := db.GetGroceryList(planID)
+	items, err := db.GetGroceryList("test-user", planID)
 	elapsed := time.Since(start)
 	if err != nil {
 		t.Fatalf("GetGroceryList: %v", err)
@@ -161,7 +161,7 @@ func TestNormalize(t *testing.T) {
 	db := initDBWithParser(t, parser)
 
 	plan1 := seedRecipeAndPlan(t, db, []rec.Ingredient{{Name: "Chicken Breast"}})
-	if _, err := db.GetGroceryList(plan1); err != nil {
+	if _, err := db.GetGroceryList("test-user", plan1); err != nil {
 		t.Fatalf("first plan: %v", err)
 	}
 
@@ -173,7 +173,7 @@ func TestNormalize(t *testing.T) {
 	plan2, _ := db.CreateMealPlan("test-user", []string{recipeID2})
 
 	before := atomic.LoadInt32(hits)
-	items, err := db.GetGroceryList(plan2)
+	items, err := db.GetGroceryList("test-user", plan2)
 	if err != nil {
 		t.Fatalf("second plan: %v", err)
 	}
@@ -220,7 +220,7 @@ func TestRecategorizeAll_UpdatesCache(t *testing.T) {
 	db := initDBWithParser(t, parser)
 
 	planID := seedRecipeAndPlan(t, db, []rec.Ingredient{{Name: "Chicken Breast"}})
-	items, err := db.GetGroceryList(planID)
+	items, err := db.GetGroceryList("test-user", planID)
 	if err != nil {
 		t.Fatalf("warm cache: %v", err)
 	}
@@ -239,7 +239,7 @@ func TestRecategorizeAll_UpdatesCache(t *testing.T) {
 		t.Errorf("expected total=1 changed=1 fellBack=0, got total=%d changed=%d fellBack=%d", total, changed, fellBack)
 	}
 
-	items, err = db.GetGroceryList(planID)
+	items, err = db.GetGroceryList("test-user", planID)
 	if err != nil {
 		t.Fatalf("post-recat list: %v", err)
 	}
