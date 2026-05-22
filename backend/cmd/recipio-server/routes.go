@@ -88,6 +88,12 @@ func SetUpRoutes(
 	mux.Handle("DELETE /grocery-lists/{id}", protected(handleDesignDeleteGroceryList(recipeDatabase)))
 	mux.Handle("OPTIONS /grocery-lists", preflight)
 	mux.Handle("OPTIONS /grocery-lists/{id}", preflight)
+
+	// Category endpoints
+	mux.Handle("GET /categories", protected(handleGetCategories()))
+	mux.Handle("POST /categories/recategorize", protected(handleRecategorizeIngredient(categoryDb)))
+	mux.Handle("OPTIONS /categories", preflight)
+	mux.Handle("OPTIONS /categories/recategorize", preflight)
 }
 
 // setupSPAHandler configures serving the frontend SPA

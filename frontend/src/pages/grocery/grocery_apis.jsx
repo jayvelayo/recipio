@@ -46,3 +46,21 @@ export function deleteGroceryList(id) {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
     });
 }
+
+export function getCategories() {
+  return fetch('/categories', { headers: authHeaders() })
+    .then((res) => {
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.json();
+    });
+}
+
+export function recategorizeIngredient(name, category) {
+  return fetch('/categories/recategorize', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ name, category }),
+  }).then((res) => {
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  });
+}

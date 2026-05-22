@@ -2,6 +2,7 @@ package recipes
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"time"
 )
@@ -142,6 +143,29 @@ func Categorize(items []GroceryListItem, p Prompter, db CategoryDb) {
 			items[i].Category = UncategorizedName
 		}
 	}
+}
+
+// Recategorize sets the cache mapping for a single ingredient name to the
+// given category. The name is normalized before lookup so callers can pass the
+// raw display name. Returns an error if the category name is not in
+// Categories. Creates the mapping if it does not yet exist; otherwise updates.
+func Recategorize(db CategoryDb, name, categoryName string) error {
+	normalized := NormalizeIngredientName(name)
+	if normalized == "" {
+		return fmt.Errorf("ingredient name is required")
+	}
+	catID := CategoryID(categoryName)
+	if catID == 0 {
+		return fmt.Errorf("unknown category %q", categoryName)
+	}
+	existing, err := db.FetchIngredientCategories([]string{normalized})
+	if err != nil {
+		return err
+	}
+	if existing[0] == 0 {
+		return db.CreateNewMapping(normalized, catID)
+	}
+	return db.UpdateMapping(normalized, catID)
 }
 
 // RecategorizeAll re-runs every cached mapping through the LLM against the

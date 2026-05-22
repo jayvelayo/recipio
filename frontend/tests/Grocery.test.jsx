@@ -15,6 +15,8 @@ vi.mock('../src/pages/grocery/grocery_apis', () => ({
   updateGroceryList: vi.fn(),
   deleteGroceryList: vi.fn(),
   createGroceryList: vi.fn(),
+  getCategories: vi.fn().mockResolvedValue({}),
+  recategorizeIngredient: vi.fn(),
 }))
 
 import { GroceryListList } from '../src/pages/grocery/GroceryListList'

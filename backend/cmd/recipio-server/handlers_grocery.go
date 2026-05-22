@@ -109,6 +109,35 @@ func handleDesignUpdateGroceryList(recipeDb rec.RecipeDatabase) http.Handler {
 	})
 }
 
+func handleGetCategories() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		out := make(map[string]int, len(rec.Categories))
+		for _, name := range rec.Categories {
+			out[name] = rec.CategoryID(name)
+		}
+		encodeJson(w, http.StatusOK, out)
+	})
+}
+
+func handleRecategorizeIngredient(catDb rec.CategoryDb) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Content-Type") != "application/json" {
+			http.Error(w, "Content-Type must be application/json", http.StatusUnsupportedMediaType)
+			return
+		}
+		var body RecategorizeIngredientRequest
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			http.Error(w, "Invalid JSON body", http.StatusBadRequest)
+			return
+		}
+		if err := rec.Recategorize(catDb, body.Name, body.Category); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	})
+}
+
 func handleDesignDeleteGroceryList(recipeDb rec.RecipeDatabase) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		id := r.PathValue("id")

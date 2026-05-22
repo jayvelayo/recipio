@@ -33,6 +33,11 @@ type CreateGroceryListResponse struct {
 	Name string `json:"name"`
 }
 
+type RecategorizeIngredientRequest struct {
+	Name     string `json:"name"`
+	Category string `json:"category"`
+}
+
 type RegisterRequest struct {
 	Name     string `json:"name"`
 	Email    string `json:"email"`
