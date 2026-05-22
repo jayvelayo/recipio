@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/jayvelayo/recipio/internal/authn"
+	"github.com/jayvelayo/recipio/internal/llm"
 	rec "github.com/jayvelayo/recipio/internal/recipes"
 	"golang.org/x/time/rate"
 )
@@ -17,6 +18,7 @@ import (
 func SetUpRoutes(
 	mux *http.ServeMux,
 	recipeDatabase rec.RecipeDatabase,
+	categoryDb rec.CategoryDb,
 	authDatabase authn.PasswordDatabase,
 	allowedOrigins []string,
 	googleDB authn.GoogleAuthDatabase,
@@ -46,7 +48,7 @@ func SetUpRoutes(
 	mux.Handle("OPTIONS /recipes/{id}", preflight)
 
 	// AI parsing endpoints
-	aiParser := rec.NewAIParser(os.Getenv("GROQ_API_KEY"))
+	aiParser := llm.NewGroqClient(os.Getenv("GROQ_API_KEY"))
 	mux.Handle("POST /parse-recipe", cors(handleDesignParseRecipe(aiParser)))
 	mux.Handle("POST /parse-recipe-url", protected(handleDesignParseRecipeURL(aiParser)))
 	mux.Handle("OPTIONS /parse-recipe", preflight)
@@ -78,10 +80,10 @@ func SetUpRoutes(
 	mux.Handle("OPTIONS /auth/google/callback", preflight)
 
 	// Grocery list endpoints
-	mux.Handle("GET /grocery-list/{meal_plan_id}", protected(handleDesignGetGroceryList(recipeDatabase)))
+	mux.Handle("GET /grocery-list/{meal_plan_id}", protected(handleDesignGetGroceryList(recipeDatabase, aiParser, categoryDb)))
 	mux.Handle("POST /grocery-lists", protected(handleDesignCreateGroceryList(recipeDatabase)))
-	mux.Handle("GET /grocery-lists", protected(handleDesignGetAllGroceryLists(recipeDatabase)))
-	mux.Handle("GET /grocery-lists/{id}", protected(handleDesignGetGroceryListByID(recipeDatabase)))
+	mux.Handle("GET /grocery-lists", protected(handleDesignGetAllGroceryLists(recipeDatabase, aiParser, categoryDb)))
+	mux.Handle("GET /grocery-lists/{id}", protected(handleDesignGetGroceryListByID(recipeDatabase, aiParser, categoryDb)))
 	mux.Handle("PUT /grocery-lists/{id}", protected(handleDesignUpdateGroceryList(recipeDatabase)))
 	mux.Handle("DELETE /grocery-lists/{id}", protected(handleDesignDeleteGroceryList(recipeDatabase)))
 	mux.Handle("OPTIONS /grocery-lists", preflight)

@@ -5,13 +5,12 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jayvelayo/recipio/internal/authn"
-	rec "github.com/jayvelayo/recipio/internal/recipes"
 	"github.com/jayvelayo/recipio/internal/sqlite_db"
 )
 
 func initAuthDB(t *testing.T) authn.PasswordDatabase {
 	t.Helper()
-	db, err := sqlite_db.InitDb(":memory:", rec.AIParser{})
+	db, err := sqlite_db.InitDb(":memory:")
 	if err != nil {
 		t.Fatalf("failed to init db: %v", err)
 	}
@@ -25,7 +24,7 @@ func initAuthDB(t *testing.T) authn.PasswordDatabase {
 
 func initGoogleAuthDB(t *testing.T) authn.GoogleAuthDatabase {
 	t.Helper()
-	db, err := sqlite_db.InitDb(":memory:", rec.AIParser{})
+	db, err := sqlite_db.InitDb(":memory:")
 	if err != nil {
 		t.Fatalf("failed to init db: %v", err)
 	}

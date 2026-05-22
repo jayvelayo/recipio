@@ -62,7 +62,7 @@ CREATE TABLE IF NOT EXISTS ingredient_categories (
     name TEXT NOT NULL UNIQUE
 );
 
-CREATE TABLE IF NOT EXISTS ingredient_category_cache (
+CREATE TABLE IF NOT EXISTS ingredient_category_map (
     normalized_name TEXT PRIMARY KEY,
     category_id INTEGER NOT NULL,
     FOREIGN KEY (category_id) REFERENCES ingredient_categories(id)

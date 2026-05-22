@@ -79,10 +79,10 @@ Lookup table seeded at startup from `internal/recipes/categories.go` (kept in sy
 
 | Column | Type    | Constraints       | Description                                   |
 |--------|---------|-------------------|-----------------------------------------------|
-| id     | integer | PRIMARY KEY       | Auto-assigned by SQLite                       |
-| name   | text    | NOT NULL, UNIQUE  | Category display name (e.g. "Meat", "Fruits") |
+| id     | integer | PRIMARY KEY       | 1-indexed position in `internal/recipes/categories.go` (seeded with explicit ids) |
+| name   | text    | NOT NULL, UNIQUE  | Category display name (e.g. "Meat", "Fruits")                                     |
 
-### Table: `ingredient_category_cache`
+### Table: `ingredient_category_map`
 
 Cache of categorization results keyed by a normalized ingredient name (lowercase, whitespace collapsed to underscores). Populated lazily when grocery lists are read; can be rebuilt with `cmd/recategorize`.
 
@@ -207,7 +207,7 @@ CREATE TABLE IF NOT EXISTS ingredient_categories (
     name TEXT NOT NULL UNIQUE
 );
 
-CREATE TABLE IF NOT EXISTS ingredient_category_cache (
+CREATE TABLE IF NOT EXISTS ingredient_category_map (
     normalized_name TEXT PRIMARY KEY,
     category_id INTEGER NOT NULL,
     FOREIGN KEY (category_id) REFERENCES ingredient_categories(id)

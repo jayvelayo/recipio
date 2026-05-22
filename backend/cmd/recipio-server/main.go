@@ -52,6 +52,7 @@ func loadEnvFile() error {
 // newServer creates and returns the HTTP server handler with all routes
 func newServer(
 	recipeDatabase rec.RecipeDatabase,
+	categoryDb rec.CategoryDb,
 	authDatabase authn.PasswordDatabase,
 	googleDB authn.GoogleAuthDatabase,
 	googleCfg authn.GoogleOAuthConfig,
@@ -59,7 +60,7 @@ func newServer(
 	emailSender authn.EmailSender,
 ) http.Handler {
 	mux := http.NewServeMux()
-	SetUpRoutes(mux, recipeDatabase, authDatabase, allowedOrigins, googleDB, googleCfg, emailSender)
+	SetUpRoutes(mux, recipeDatabase, categoryDb, authDatabase, allowedOrigins, googleDB, googleCfg, emailSender)
 	return mux
 }
 
@@ -98,13 +99,13 @@ func main() {
 		log.Fatalf("unable to create cache dir: %v", err)
 	}
 	log.Printf("Using database: %s", dbPath)
-	aiParser := rec.NewAIParser(os.Getenv("GROQ_API_KEY"))
-	dbCtx, err := sqlite_db.InitDb(dbPath, aiParser)
+	dbCtx, err := sqlite_db.InitDb(dbPath)
 	if err != nil {
 		log.Fatalf("unable to init db: %v", err)
 	}
 	defer dbCtx.CloseDb()
 	var recipeDb rec.RecipeDatabase = dbCtx
+	var categoryDb rec.CategoryDb = dbCtx
 	// TODO: use Redis/PostgreDB for auth database as next learning step
 	authDb, ok := any(dbCtx).(authn.PasswordDatabase)
 	if !ok {
@@ -146,7 +147,7 @@ func main() {
 		port = "4002"
 	}
 
-	srv := withLogging(newServer(recipeDb, authDb, googleDb, googleCfg, allowedOrigins, emailSender))
+	srv := withLogging(newServer(recipeDb, categoryDb, authDb, googleDb, googleCfg, allowedOrigins, emailSender))
 	log.Printf("Starting server on :%s...", port)
 	if err := http.ListenAndServe(":"+port, srv); err != nil {
 		log.Fatalf("Could not start server: %s\n", err)

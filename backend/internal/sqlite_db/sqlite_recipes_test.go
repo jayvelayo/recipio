@@ -1,9 +1,7 @@
 package sqlite_db_test
 
 import (
-	"net/http"
 	"testing"
-	"time"
 
 	rec "github.com/jayvelayo/recipio/internal/recipes"
 	"github.com/jayvelayo/recipio/internal/sqlite_db"
@@ -16,7 +14,7 @@ const (
 
 func initRecipeDB(t *testing.T) rec.RecipeDatabase {
 	t.Helper()
-	db, err := sqlite_db.InitDb(":memory:", rec.AIParser{})
+	db, err := sqlite_db.InitDb(":memory:")
 	if err != nil {
 		t.Fatalf("failed to init db: %v", err)
 	}
@@ -296,8 +294,7 @@ func TestGetGroceryListAuth(t *testing.T) {
 
 func TestGroceryListByID(t *testing.T) {
 	t.Run("retrieves owner's grocery list", func(t *testing.T) {
-		srv, _ := fakeGroq(t, map[string]string{"milk": "Dairy"})
-		db := initDBWithParser(t, rec.AIParser{APIURL: srv.URL, Client: &http.Client{Timeout: 5 * time.Second}})
+		db := initRecipeDB(t)
 		id, err := db.CreateGroceryList(userA, "shop", []rec.GroceryListItem{{Name: "milk", Quantity: "1"}}, nil)
 		if err != nil {
 			t.Fatalf("failed to create grocery list: %v", err)
@@ -322,8 +319,7 @@ func TestGroceryListByID(t *testing.T) {
 
 func TestUpdateGroceryListAuth(t *testing.T) {
 	t.Run("returns not-found when another user tries to update it", func(t *testing.T) {
-		srv, _ := fakeGroq(t, map[string]string{"milk": "Dairy"})
-		db := initDBWithParser(t, rec.AIParser{APIURL: srv.URL, Client: &http.Client{Timeout: 5 * time.Second}})
+		db := initRecipeDB(t)
 		id, _ := db.CreateGroceryList(userA, "shop", []rec.GroceryListItem{{Name: "milk", Quantity: "1"}}, nil)
 		err := db.UpdateGroceryList(userB, id, []rec.GroceryListItem{{Name: "hijacked", Quantity: "9"}})
 		if err == nil {

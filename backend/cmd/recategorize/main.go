@@ -1,8 +1,7 @@
 // recategorize re-runs every cached ingredient through the AI categorizer
-// against the current ingredient_categories table. Run this after editing
-// doc/grocerylist_categories.md (and the matching list in
-// internal/recipes/categories.go) so existing cache rows are reassigned to the
-// new category set.
+// against the current Categories list. Run this after editing
+// doc/grocerylist_categories.md and the matching list in
+// internal/recipes/categories.go.
 //
 // Usage (from the backend/ directory):
 //
@@ -16,6 +15,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/jayvelayo/recipio/internal/llm"
 	rec "github.com/jayvelayo/recipio/internal/recipes"
 	"github.com/jayvelayo/recipio/internal/sqlite_db"
 )
@@ -39,15 +39,15 @@ func main() {
 	if apiKey == "" {
 		log.Fatal("GROQ_API_KEY must be set")
 	}
-	parser := rec.NewAIParser(apiKey)
+	parser := llm.NewGroqClient(apiKey)
 
-	db, err := sqlite_db.InitDb(dbPath, parser)
+	db, err := sqlite_db.InitDb(dbPath)
 	if err != nil {
 		log.Fatalf("init db: %v", err)
 	}
 	defer db.CloseDb()
 
-	total, changed, fellBack, err := db.RecategorizeAll(*batchSize, *batchTimeout)
+	total, changed, fellBack, err := rec.RecategorizeAll(parser, db, *batchSize, *batchTimeout)
 	if err != nil {
 		log.Fatalf("recategorize: %v", err)
 	}

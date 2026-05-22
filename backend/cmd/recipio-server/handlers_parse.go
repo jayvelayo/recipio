@@ -13,10 +13,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jayvelayo/recipio/internal/llm"
 	rec "github.com/jayvelayo/recipio/internal/recipes"
 )
 
-func handleDesignParseRecipe(parser rec.AIParser) http.Handler {
+func handleDesignParseRecipe(parser rec.Prompter) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("Content-Type") != "application/json" {
 			http.Error(w, "Content-Type must be application/json", http.StatusUnsupportedMediaType)
@@ -34,9 +35,9 @@ func handleDesignParseRecipe(parser rec.AIParser) http.Handler {
 			return
 		}
 
-		recipe, err := parser.ParseRecipeText(sanitizeRecipeText(body.RawRecipeText))
+		recipe, err := rec.ParseRecipeText(parser, sanitizeRecipeText(body.RawRecipeText))
 		if err != nil {
-			if errors.Is(err, rec.ErrLLMTimeout) {
+			if errors.Is(err, llm.ErrLLMTimeout) {
 				http.Error(w, "LLM request timed out", http.StatusGatewayTimeout)
 				return
 			}
@@ -49,7 +50,7 @@ func handleDesignParseRecipe(parser rec.AIParser) http.Handler {
 	})
 }
 
-func handleDesignParseRecipeURL(parser rec.AIParser) http.Handler {
+func handleDesignParseRecipeURL(parser rec.Prompter) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("Content-Type") != "application/json" {
 			http.Error(w, "Content-Type must be application/json", http.StatusUnsupportedMediaType)
@@ -81,9 +82,9 @@ func handleDesignParseRecipeURL(parser rec.AIParser) http.Handler {
 			return
 		}
 
-		recipe, err := parser.ParseRecipeText(text)
+		recipe, err := rec.ParseRecipeText(parser, text)
 		if err != nil {
-			if errors.Is(err, rec.ErrLLMTimeout) {
+			if errors.Is(err, llm.ErrLLMTimeout) {
 				http.Error(w, "LLM request timed out", http.StatusGatewayTimeout)
 				return
 			}

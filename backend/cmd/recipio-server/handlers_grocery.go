@@ -7,7 +7,7 @@ import (
 	rec "github.com/jayvelayo/recipio/internal/recipes"
 )
 
-func handleDesignGetGroceryList(recipeDb rec.RecipeDatabase) http.Handler {
+func handleDesignGetGroceryList(recipeDb rec.RecipeDatabase, parser rec.Prompter, catDb rec.CategoryDb) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		mealPlanID := r.PathValue("meal_plan_id")
 		if mealPlanID == "" {
@@ -20,6 +20,7 @@ func handleDesignGetGroceryList(recipeDb rec.RecipeDatabase) http.Handler {
 			http.Error(w, err.Error(), http.StatusNotFound)
 			return
 		}
+		rec.Categorize(ingredients, parser, catDb)
 		encodeJson(w, http.StatusOK, GroceryListResponse{Ingredients: ingredients})
 	})
 }
@@ -49,7 +50,7 @@ func handleDesignCreateGroceryList(recipeDb rec.RecipeDatabase) http.Handler {
 	})
 }
 
-func handleDesignGetAllGroceryLists(recipeDb rec.RecipeDatabase) http.Handler {
+func handleDesignGetAllGroceryLists(recipeDb rec.RecipeDatabase, parser rec.Prompter, catDb rec.CategoryDb) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		userID := r.Context().Value(userIDKey).(string)
 		lists, err := recipeDb.GetAllGroceryLists(userID)
@@ -57,11 +58,14 @@ func handleDesignGetAllGroceryLists(recipeDb rec.RecipeDatabase) http.Handler {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
+		for i := range lists {
+			rec.Categorize(lists[i].Items, parser, catDb)
+		}
 		encodeJson(w, http.StatusOK, lists)
 	})
 }
 
-func handleDesignGetGroceryListByID(recipeDb rec.RecipeDatabase) http.Handler {
+func handleDesignGetGroceryListByID(recipeDb rec.RecipeDatabase, parser rec.Prompter, catDb rec.CategoryDb) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		id := r.PathValue("id")
 		if id == "" {
@@ -74,6 +78,7 @@ func handleDesignGetGroceryListByID(recipeDb rec.RecipeDatabase) http.Handler {
 			http.Error(w, err.Error(), http.StatusNotFound)
 			return
 		}
+		rec.Categorize(list.Items, parser, catDb)
 		encodeJson(w, http.StatusOK, list)
 	})
 }

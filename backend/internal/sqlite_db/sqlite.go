@@ -15,7 +15,6 @@ import (
 
 type SqliteDatabaseContext struct {
 	sqliteDb *sql.DB
-	parser   rec.AIParser
 }
 
 //go:embed schema.tmpl
@@ -102,6 +101,25 @@ var dbMigrations = []migration{
 		_, err = db.Exec(`UPDATE recipes SET created_at = datetime('now') WHERE created_at IS NULL`)
 		return err
 	}},
+	{7, func(db *sql.DB) error {
+		// Rename ingredient_category_cache → ingredient_category_map. Schema
+		// template creates the new name on fresh DBs; this catches dev DBs
+		// created between the two table-name commits.
+		var exists string
+		err := db.QueryRow(`SELECT name FROM sqlite_master WHERE type='table' AND name='ingredient_category_cache'`).Scan(&exists)
+		if err == sql.ErrNoRows {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		// Drop the freshly-created empty target if present so RENAME succeeds.
+		if _, err := db.Exec(`DROP TABLE IF EXISTS ingredient_category_map`); err != nil {
+			return err
+		}
+		_, err = db.Exec(`ALTER TABLE ingredient_category_cache RENAME TO ingredient_category_map`)
+		return err
+	}},
 }
 
 func runMigrations(db *sql.DB) error {
@@ -124,7 +142,7 @@ func runMigrations(db *sql.DB) error {
 	return nil
 }
 
-func InitDb(db_path string, parser rec.AIParser) (*SqliteDatabaseContext, error) {
+func InitDb(db_path string) (*SqliteDatabaseContext, error) {
 	db, err := sql.Open("sqlite", db_path)
 	if err != nil {
 		log.Fatal(err)
@@ -142,17 +160,20 @@ func InitDb(db_path string, parser rec.AIParser) (*SqliteDatabaseContext, error)
 	if err := seedIngredientCategories(db); err != nil {
 		return nil, fmt.Errorf("unable to seed ingredient categories: %v", err)
 	}
-	return &SqliteDatabaseContext{sqliteDb: db, parser: parser}, nil
+	return &SqliteDatabaseContext{sqliteDb: db}, nil
 }
 
+// seedIngredientCategories inserts rec.Categories with explicit ids that match
+// their 1-indexed position so recipes.CategoryID / CategoryName can translate
+// without a DB round-trip.
 func seedIngredientCategories(db *sql.DB) error {
-	stmt, err := db.Prepare("INSERT OR IGNORE INTO ingredient_categories (name) VALUES (?)")
+	stmt, err := db.Prepare("INSERT OR IGNORE INTO ingredient_categories (id, name) VALUES (?, ?)")
 	if err != nil {
 		return err
 	}
 	defer stmt.Close()
-	for _, name := range rec.Categories {
-		if _, err := stmt.Exec(name); err != nil {
+	for i, name := range rec.Categories {
+		if _, err := stmt.Exec(i+1, name); err != nil {
 			return err
 		}
 	}

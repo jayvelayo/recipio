@@ -12,6 +12,17 @@ import (
 	rec "github.com/jayvelayo/recipio/internal/recipes"
 )
 
+// noopCategoryDb satisfies rec.CategoryDb with empty results — handler tests
+// don't exercise categorization, they assert on status codes only.
+type noopCategoryDb struct{}
+
+func (noopCategoryDb) FetchIngredientCategories(names []string) ([]int, error) {
+	return make([]int, len(names)), nil
+}
+func (noopCategoryDb) CreateNewMapping(string, int) error  { return nil }
+func (noopCategoryDb) AllMappings() (map[string]int, error) { return map[string]int{}, nil }
+func (noopCategoryDb) UpdateMapping(string, int) error      { return nil }
+
 func createRequestWithBody(method, url string, body interface{}) (*http.Request, error) {
 	jsonBody, err := json.Marshal(body)
 	if err != nil {
@@ -41,7 +52,7 @@ const (
 
 func createFakeServer(db rec.RecipeDatabase) http.Handler {
 	mux := http.NewServeMux()
-	SetUpRoutes(mux, db, nil, []string{}, nil, authn.GoogleOAuthConfig{}, authn.EmailSender{})
+	SetUpRoutes(mux, db, noopCategoryDb{}, nil, []string{}, nil, authn.GoogleOAuthConfig{}, authn.EmailSender{})
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		uid := testUserID
 		if h := r.Header.Get(asUserHeader); h != "" {
