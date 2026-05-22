@@ -74,7 +74,7 @@ function MealplanRow({ plan }) {
                     <p className="text-sm font-medium text-gray-900 mb-2">Ingredients needed:</p>
                     {ingredients.map((ing, idx) => (
                       <div key={idx} className="text-sm text-gray-700 py-1">
-                        • {ing}
+                        • {ing.quantity ? `${ing.quantity} ` : ''}{ing.name}
                       </div>
                     ))}
                   </>
