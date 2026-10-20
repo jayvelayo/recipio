@@ -78,7 +78,10 @@ describe('MealplanList', () => {
 
   it('fetches and shows ingredients when the expand button is clicked', async () => {
     apis.getMealPlans.mockResolvedValue([mockPlans[0]])
-    apis.getGroceryList.mockResolvedValue(['2 eggs', '2 slices bread'])
+    apis.getGroceryList.mockResolvedValue([
+      { quantity: '2', name: 'eggs' },
+      { quantity: '2 slices', name: 'bread' },
+    ])
     renderWithRouter(<MealplanList />)
     await waitFor(() => screen.getByText('Meal Plan #1'))
 
