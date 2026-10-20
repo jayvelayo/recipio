@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/jayvelayo/recipio/internal/authn"
@@ -108,6 +109,12 @@ func setupSPAHandler(mux *http.ServeMux) {
 
 	// Custom SPA file server that serves index.html for non-existent files
 	spaHandler := func(w http.ResponseWriter, r *http.Request) {
+		// Hashed bundles under /assets/ never change, but index.html (and the
+		// SPA fallback) must be revalidated or browsers, notably iOS home-screen
+		// apps, keep serving a stale page that points at old bundles.
+		if !strings.HasPrefix(r.URL.Path, "/assets/") {
+			w.Header().Set("Cache-Control", "no-cache")
+		}
 		// Check if the requested file exists
 		filePath := filepath.Join(distDir, r.URL.Path)
 		if _, err := os.Stat(filePath); os.IsNotExist(err) {
